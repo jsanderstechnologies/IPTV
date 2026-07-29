@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 import Crawler
 import warnings
 from clint.textui import colored
@@ -28,10 +29,17 @@ def menu():
     print("7 - Manually add custom server URL to list")
     print("")
 
+def safe_input(prompt=""):
+    try:
+        return input(prompt)
+    except EOFError:
+        print("\n" + colored.red("EOF received or non-interactive terminal stream. Exiting..."))
+        sys.exit(0)
+
 while True:
     menu()
     try:
-        raw_val = input("Please select an option: ")
+        raw_val = safe_input("Please select an option: ")
         if not raw_val:
             continue
         choosenMenu = int(raw_val)
@@ -53,7 +61,7 @@ while True:
         for index, server in enumerate(cr.parsedUrls):
             print(f"[{index}] - {server}")
     elif choosenMenu == 3:
-        language = str(input("What language do you need? (it, en, es): "))
+        language = str(safe_input("What language do you need? (it, en, es): "))
         if cr.change_language(language):
             print(colored.green(f"Language changed, the system now will attack the servers with {language}.txt"))
         else:
@@ -68,7 +76,7 @@ while True:
         print(colored.green(result))
     elif choosenMenu == 6:
         try:
-            index = int(input("Please provide the number near the URLs found: "))
+            index = int(safe_input("Please provide the number near the URLs found: "))
             url = cr.parsedUrls[index]
             result = cr.search_accounts(url)
             print(colored.green(result))
@@ -77,7 +85,7 @@ while True:
         except ValueError:
             print(colored.red("You have entered a wrong value, please provide a NUMBER. Use option 2 first"))
     elif choosenMenu == 7:
-        custom_url = input("Please enter custom server URL (e.g. http://domain.com:8080): ").strip()
+        custom_url = safe_input("Please enter custom server URL (e.g. http://domain.com:8080): ").strip()
         if cr.add_custom_url(custom_url):
             print(colored.green(f"Successfully added server: {custom_url}"))
         else:
