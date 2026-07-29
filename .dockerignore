@@ -1,0 +1,7 @@
+.git
+.gitignore
+.circleci
+screenshot
+*.pyc
+__pycache__
+output/*

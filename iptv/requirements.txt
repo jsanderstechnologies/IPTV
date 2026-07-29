@@ -1,6 +1,5 @@
-pyprind==2.9.3
-google==1.7
-psutil==3.3.0
-clint==0.5.1
-colored==1.2.1
-tqdm==3.4.0
+requests>=2.28.0
+tqdm>=4.64.0
+clint>=0.5.1
+googlesearch-python>=1.1.0
+pyprind>=2.11.0
