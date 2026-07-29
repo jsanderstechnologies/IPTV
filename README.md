@@ -20,6 +20,30 @@ You can run IPTV directly using Docker without installing local Python dependenc
 docker run -it --rm ghcr.io/jsanderstechnologies/iptv:latest
 ```
 
+### Docker Compose Example
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+
+services:
+  iptv:
+    image: ghcr.io/jsanderstechnologies/iptv:latest
+    container_name: iptv
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    volumes:
+      - ./output:/app/iptv/output
+```
+
+Run with Docker Compose:
+
+```bash
+docker compose run --rm iptv
+```
+
 ### Build Docker Image Locally
 
 ```bash
