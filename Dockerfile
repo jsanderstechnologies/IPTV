@@ -18,5 +18,5 @@ WORKDIR /app/iptv
 
 EXPOSE 5000
 
-# Set default entrypoint to Flask Web App
-ENTRYPOINT ["python", "app.py"]
+# Set default CMD to Flask Web App
+CMD ["python", "app.py"]
