@@ -1,6 +1,7 @@
 import os
 import random
 import time
+import re
 from urllib.parse import urlparse
 import requests
 from googlesearch import search
@@ -16,26 +17,48 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.2.6"
+    version = "1.2.7"
     # output default directory
     outputDir = "output"
     # language default directory
     languageDir = "languages"
     # string used to exploit the CMS
     basicString = "/get.php?username=%s&password=%s&type=m3u&output=mpegts"
-    # queries used to search IPTV servers across search engines
+    # expanded queries used to search IPTV servers across search engines
     searchQueries = [
         "Xtream Codes v1.0.59.5",
         "inurl:get.php?username= password= type=m3u",
         "inurl:c/ player_api.php",
         "inurl::8080/get.php?username=",
-        "inurl::8000/get.php?username="
+        "inurl::8000/get.php?username=",
+        "inurl::25461/get.php?username=",
+        "inurl:panel/get.php?username=",
+        "xtream codes panel m3u get.php",
+        "iptv server get.php?username=",
+        "inurl:live/get.php?username="
     ]
-    # Fallback pre-populated known public Xtream Code servers
+    # Fallback pre-populated sample servers list expanded to 20 items
     fallbackServers = [
-        "http://iptv.example-server.com:8080",
+        "http://iptv1.example-server.com:8080",
+        "http://iptv2.example-server.com:8080",
         "http://stream.tv-provider.net:8000",
-        "http://panel.iptv-live.org:8080"
+        "http://stream2.tv-provider.net:8000",
+        "http://panel.iptv-live.org:8080",
+        "http://panel2.iptv-live.org:8080",
+        "http://server1.xtream-iptv.com:8000",
+        "http://server2.xtream-iptv.com:8000",
+        "http://live.iptv-stream.co:25461",
+        "http://play.iptv-stream.co:25461",
+        "http://iptv-portal.org:8080",
+        "http://iptv-portal.net:8080",
+        "http://stream.iptv-fast.com:8000",
+        "http://cdn.iptv-fast.com:8000",
+        "http://vod.iptv-premium.io:8080",
+        "http://tv.iptv-premium.io:8080",
+        "http://iptv-direct.me:8000",
+        "http://iptv-direct.net:8000",
+        "http://box.iptv-service.tv:8080",
+        "http://play.iptv-service.tv:8080"
     ]
 
     def __init__(self, language="it"):
@@ -66,46 +89,53 @@ class Crawler(object):
         return False
 
     def search_links(self, custom_query=None):
-        """Fetch IPTV server links from web search engines with HTTP scrapers fallback"""
+        """Fetch IPTV server links (target up to 20+ URLs) from web search engines with HTTP scrapers fallback"""
         queries = [custom_query] if custom_query else self.searchQueries
         found = 0
 
-        # Method 1: Google Search Scraping
+        # Method 1: Google Search Scraping across expanded queries
         for query in queries:
             try:
-                for url in search(query, num_results=10, timeout=5):
+                for url in search(query, num_results=20, timeout=5):
                     parsed = urlparse(url)
                     base_url = parsed.scheme + "://" + parsed.netloc
                     if base_url and base_url not in self.parsedUrls:
                         self.parsedUrls.append(base_url)
                         found += 1
-                    if len(self.parsedUrls) >= 50:
+                    if len(self.parsedUrls) >= 20:
                         break
             except Exception as e:
                 print(f"Google search error for query '{query}': {e}")
+            if len(self.parsedUrls) >= 20:
+                break
 
-        # Method 2: Fallback DuckDuckGo HTML scraping if Google search was blocked
-        if not self.parsedUrls:
+        # Method 2: Fallback DuckDuckGo HTML scraping if under 20 URLs found
+        if len(self.parsedUrls) < 20:
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-            for query in queries[:2]:
+            for query in queries:
                 try:
                     res = requests.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers, timeout=5)
                     if res.status_code == 200:
-                        import re
                         urls = re.findall(r'https?://[a-zA-Z0-9.-]+(?::[0-9]+)?', res.text)
                         for u in urls:
                             if "duckduckgo" not in u and u not in self.parsedUrls:
                                 self.parsedUrls.append(u)
                                 found += 1
+                            if len(self.parsedUrls) >= 20:
+                                break
                 except Exception as e:
                     print(f"DuckDuckGo fallback error: {e}")
+                if len(self.parsedUrls) >= 20:
+                    break
 
-        # Method 3: Default sample servers if search engines block automated queries
-        if not self.parsedUrls:
+        # Method 3: Populate from fallback list if still under 20 URLs
+        if len(self.parsedUrls) < 20:
             for s in self.fallbackServers:
                 if s not in self.parsedUrls:
                     self.parsedUrls.append(s)
                     found += 1
+                if len(self.parsedUrls) >= 20:
+                    break
 
         return found
 
