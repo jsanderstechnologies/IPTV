@@ -16,5 +16,7 @@ COPY iptv /app/iptv
 
 WORKDIR /app/iptv
 
-# Set default entrypoint
-ENTRYPOINT ["python", "iptv.py"]
+EXPOSE 5000
+
+# Set default entrypoint to Flask Web App
+ENTRYPOINT ["python", "app.py"]

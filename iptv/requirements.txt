@@ -3,3 +3,5 @@ tqdm>=4.64.0
 clint>=0.5.1
 googlesearch-python>=1.1.0
 pyprind>=2.11.0
+flask>=2.3.0
+flask-cors>=4.0.0

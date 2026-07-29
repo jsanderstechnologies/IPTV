@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Crawler & Scanner Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <span class="icon">📺</span>
+                <h1>IPTV Crawler <span class="badge">v1.2.3</span></h1>
+            </div>
+            <div class="controls-top">
+                <label for="lang-select">Language Pack:</label>
+                <select id="lang-select" onchange="changeLanguage()">
+                    <option value="it">Italian (it)</option>
+                    <option value="en">English (en)</option>
+                    <option value="es">Spanish (es)</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <section class="stats-grid">
+            <div class="card stat-card">
+                <h3>Discovered Servers</h3>
+                <p class="stat-number" id="server-count">0</p>
+            </div>
+            <div class="card stat-card">
+                <h3>Accounts Found</h3>
+                <p class="stat-number highlight" id="accounts-found">0</p>
+            </div>
+            <div class="card stat-card">
+                <h3>Scanner Status</h3>
+                <p class="stat-status" id="status-message">Idle</p>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            <!-- Left Panel: Action & Server List -->
+            <section class="card panel">
+                <div class="panel-header">
+                    <h2>IPTV Servers</h2>
+                    <button class="btn btn-primary" onclick="searchLinks()">🔍 Search Servers</button>
+                </div>
+                <div class="server-list-container">
+                    <ul id="server-list" class="server-list">
+                        <li class="empty">No servers loaded. Click "Search Servers" to begin.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Right Panel: Scanner Progress & Playlists -->
+            <section class="card panel">
+                <div class="panel-header">
+                    <h2>Scanner Controls</h2>
+                    <button class="btn btn-accent" onclick="startScan()" id="btn-scan-random">⚡ Brute Force Random Server</button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-section">
+                    <div class="progress-header">
+                        <span id="current-url">Target: None</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Generated Playlists -->
+                <div class="panel-header" style="margin-top: 2rem;">
+                    <h2>Generated M3U Playlists</h2>
+                    <button class="btn btn-secondary" onclick="loadOutputs()">🔄 Refresh Files</button>
+                </div>
+                <div class="playlist-container">
+                    <ul id="playlist-list" class="playlist-list">
+                        <li class="empty">No playlists generated yet.</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

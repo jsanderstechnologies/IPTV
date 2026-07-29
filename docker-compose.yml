@@ -4,6 +4,8 @@ services:
   iptv:
     image: ghcr.io/jsanderstechnologies/iptv:latest
     container_name: iptv
+    ports:
+      - "5000:5000"
     stdin_open: true
     tty: true
     restart: unless-stopped
