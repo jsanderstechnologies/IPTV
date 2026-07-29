@@ -164,4 +164,7 @@ def list_outputs():
 def download_file(filepath):
     return send_from_directory(crawler.outputDir, filepath, as_attachment=True)
 
-app.run(host="0.0.0.0", port=5000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+else:
+    app.run(host="0.0.0.0", port=5000)
