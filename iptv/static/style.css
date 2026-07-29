@@ -137,6 +137,27 @@ body {
     font-weight: 600;
 }
 
+.add-url-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.input-text {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.875rem;
+}
+
+.input-text:focus {
+    outline: 1px solid var(--primary);
+}
+
 .btn {
     font-family: inherit;
     font-size: 0.875rem;

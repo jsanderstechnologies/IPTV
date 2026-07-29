@@ -15,7 +15,7 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge">v1.2.3</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v1.2.4</span></h1>
             </div>
             <div class="controls-top">
                 <label for="lang-select">Language Pack:</label>
@@ -49,11 +49,18 @@
             <section class="card panel">
                 <div class="panel-header">
                     <h2>IPTV Servers</h2>
-                    <button class="btn btn-primary" onclick="searchLinks()">🔍 Search Servers</button>
+                    <button class="btn btn-primary" onclick="searchLinks()">🔍 Auto-Search Web</button>
                 </div>
+
+                <!-- Custom URL Add Section -->
+                <div class="add-url-bar">
+                    <input type="text" id="custom-url-input" placeholder="e.g. http://server-domain.com:8080" class="input-text">
+                    <button class="btn btn-secondary" onclick="addCustomUrl()">+ Add URL</button>
+                </div>
+
                 <div class="server-list-container">
                     <ul id="server-list" class="server-list">
-                        <li class="empty">No servers loaded. Click "Search Servers" to begin.</li>
+                        <li class="empty">No servers loaded. Click "Auto-Search Web" or add a custom server URL.</li>
                     </ul>
                 </div>
             </section>

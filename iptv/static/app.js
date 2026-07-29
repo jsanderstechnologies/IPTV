@@ -26,7 +26,7 @@ async function fetchStatus() {
 function renderServers(urls) {
     const list = document.getElementById('server-list');
     if (!urls || urls.length === 0) {
-        list.innerHTML = '<li class="empty">No servers loaded. Click "Search Servers" to begin.</li>';
+        list.innerHTML = '<li class="empty">No servers loaded. Click "Auto-Search Web" or add a custom server URL.</li>';
         return;
     }
     
@@ -39,8 +39,30 @@ function renderServers(urls) {
 }
 
 async function searchLinks() {
-    document.getElementById('status-message').innerText = "Fetching links...";
+    document.getElementById('status-message').innerText = "Searching web for servers...";
     await fetch('/api/search-links', { method: 'POST' });
+}
+
+async function addCustomUrl() {
+    const input = document.getElementById('custom-url-input');
+    const url = input.value.trim();
+    if (!url) return;
+    
+    try {
+        const res = await fetch('/api/add-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        });
+        if (res.ok) {
+            input.value = '';
+            fetchStatus();
+        } else {
+            alert('Invalid or duplicate server URL.');
+        }
+    } catch (err) {
+        console.error("Failed to add URL", err);
+    }
 }
 
 async function changeLanguage() {
@@ -86,7 +108,6 @@ async function loadOutputs() {
     }
 }
 
-// Poll status every 2 seconds
 setInterval(fetchStatus, 2000);
 fetchStatus();
 loadOutputs();

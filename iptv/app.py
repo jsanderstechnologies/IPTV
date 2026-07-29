@@ -32,16 +32,27 @@ def get_status():
         "scan_state": scan_state
     })
 
+@app.route("/api/add-url", methods=["POST"])
+def add_url():
+    data = request.json or {}
+    url = data.get("url", "").strip()
+    if crawler.add_custom_url(url):
+        return jsonify({"success": True, "message": f"Added {url}", "parsed_urls": crawler.parsedUrls})
+    return jsonify({"success": False, "message": "Invalid or duplicate URL"}), 400
+
 @app.route("/api/search-links", methods=["POST"])
 def search_links():
+    data = request.json or {}
+    query = data.get("query", "").strip() or None
+
     def do_search():
-        scan_state["status_message"] = "Fetching IPTV links from search engines..."
-        crawler.search_links()
-        scan_state["status_message"] = f"Found {len(crawler.parsedUrls)} server URLs"
+        scan_state["status_message"] = "Searching web for IPTV server URLs..."
+        found = crawler.search_links(query)
+        scan_state["status_message"] = f"Search complete. Total servers available: {len(crawler.parsedUrls)}"
 
     thread = threading.Thread(target=do_search)
     thread.start()
-    return jsonify({"status": "Search started", "parsed_urls_count": len(crawler.parsedUrls)})
+    return jsonify({"status": "Search started"})
 
 @app.route("/api/change-language", methods=["POST"])
 def change_language():
@@ -69,7 +80,7 @@ def start_scan():
         target_url = url if url else (random.choice(crawler.parsedUrls) if crawler.parsedUrls else None)
         if not target_url:
             scan_state["is_scanning"] = False
-            scan_state["status_message"] = "No server URLs available. Run search first."
+            scan_state["status_message"] = "No server URLs available. Run search or add a server URL."
             return
 
         scan_state["current_url"] = target_url
