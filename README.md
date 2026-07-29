@@ -1,4 +1,4 @@
-# IPTV
+# IPTV Web & CLI Dashboard
 
 ## Disclaimer
 
@@ -8,60 +8,83 @@ This program is just a demonstration. **It's not intended** for personal purpose
 
 IPTV is a Python 3 web & CLI application that lets you crawl search engines to analyze IPTV servers.
 
-## Ethical Dilemma
+---
 
-Using this program for unauthorized access or illegal purposes is prohibited.
+## 🌐 Web Interface (Recommended)
 
-## Web Interface
+IPTV features a modern, responsive web dashboard allowing you to search servers, trigger brute-force tasks, view live scan progress, and download generated `.m3u` playlists directly from your browser.
 
-The application now includes a modern, responsive web interface!
+### 🚀 Quick Start with Docker Compose
 
-### Running with Docker (Web UI)
+1. Clone or download `docker-compose.yml`:
+   ```yaml
+   version: '3.8'
 
+   services:
+     iptv-web:
+       image: ghcr.io/jsanderstechnologies/iptv:latest
+       container_name: iptv-web
+       ports:
+         - "5000:5000"
+       restart: unless-stopped
+       environment:
+         - PYTHONUNBUFFERED=1
+       volumes:
+         - ./output:/app/iptv/output
+   ```
+
+2. Start the web service:
+   ```bash
+   docker compose up -d
+   ```
+
+3. Open your browser and navigate to:
+   ```
+   http://localhost:5000
+   ```
+
+---
+
+### 🐳 Running with Docker CLI
+
+**Run Web Interface Container:**
 ```bash
-docker run -d -p 5000:5000 --name iptv ghcr.io/jsanderstechnologies/iptv:latest
+docker run -d -p 5000:5000 -v $(pwd)/output:/app/iptv/output --name iptv-web ghcr.io/jsanderstechnologies/iptv:latest
 ```
 
-Open your browser and navigate to: `http://localhost:5000`
-
-### Running with Docker Compose
-
-```yaml
-version: '3.8'
-
-services:
-  iptv:
-    image: ghcr.io/jsanderstechnologies/iptv:latest
-    container_name: iptv
-    ports:
-      - "5000:5000"
-    restart: unless-stopped
-    volumes:
-      - ./output:/app/iptv/output
-```
-
-Run with:
-
+**Run Interactive CLI Version in Container:**
 ```bash
-docker compose up -d
+docker run -it --rm -v $(pwd)/output:/app/iptv/output ghcr.io/jsanderstechnologies/iptv:latest python iptv.py
 ```
 
-## Running CLI Version
+---
 
-If you prefer running the interactive command-line interface instead of the web server:
+## 💻 Running Locally (Without Docker)
 
-```bash
-docker run -it --rm ghcr.io/jsanderstechnologies/iptv:latest python iptv.py
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/jsanderstechnologies/IPTV.git
+   cd IPTV/iptv
+   ```
 
-## Running Locally
+2. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-* Clone the repository: `git clone https://github.com/jsanderstechnologies/IPTV.git`
-* `cd` into `iptv`
-* Install dependencies: `pip install -r requirements.txt`
-* Run Web UI: `python app.py`
-* Or run CLI: `python iptv.py`
+3. Launch Web Application:
+   ```bash
+   python app.py
+   ```
+   *(Access via `http://localhost:5000`)*
 
-## License
+4. Or Launch CLI Application:
+   ```bash
+   python iptv.py
+   ```
+
+---
+
+## 📜 License
 
 See [the license](LICENSE) for further details.
