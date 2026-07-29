@@ -25,7 +25,7 @@ def menu():
     print("4 - Brute force all server from the list")
     print("5 - Brute force random server from the list")
     print("6 - Brute force specific server from the list")
-    print("7 - Provide a random server to attack")
+    print("7 - Manually add custom server URL to list")
     print("")
 
 while True:
@@ -48,6 +48,8 @@ while True:
         print(colored.green(f"Done, {len(cr.parsedUrls)} URLs found"))
     elif choosenMenu == 2:
         print(colored.green("Printing server list"))
+        if not cr.parsedUrls:
+            print(colored.red("No servers found or added yet."))
         for index, server in enumerate(cr.parsedUrls):
             print(f"[{index}] - {server}")
     elif choosenMenu == 3:
@@ -75,6 +77,10 @@ while True:
         except ValueError:
             print(colored.red("You have entered a wrong value, please provide a NUMBER. Use option 2 first"))
     elif choosenMenu == 7:
-        print(colored.blue("coming soon..."))
+        custom_url = input("Please enter custom server URL (e.g. http://domain.com:8080): ").strip()
+        if cr.add_custom_url(custom_url):
+            print(colored.green(f"Successfully added server: {custom_url}"))
+        else:
+            print(colored.red("Invalid or duplicate URL entered."))
     else:
         print(colored.red("Option not recognized"))
