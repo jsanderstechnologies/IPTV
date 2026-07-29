@@ -6,7 +6,7 @@
     <title>IPTV Crawler & Scanner Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge" id="app-version">v1.2.4</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v1.2.5</span></h1>
             </div>
             <div class="controls-top">
                 <label for="lang-select">Language Pack:</label>
@@ -48,28 +48,28 @@
             <!-- Left Panel: Action & Server List -->
             <section class="card panel">
                 <div class="panel-header">
-                    <h2>IPTV Servers</h2>
+                    <h2>IPTV Target Servers</h2>
                     <button class="btn btn-primary" onclick="searchLinks()">🔍 Auto-Search Web</button>
                 </div>
 
                 <!-- Custom URL Add Section -->
                 <div class="add-url-bar">
                     <input type="text" id="custom-url-input" placeholder="e.g. http://server-domain.com:8080" class="input-text">
-                    <button class="btn btn-secondary" onclick="addCustomUrl()">+ Add URL</button>
+                    <button class="btn btn-accent" onclick="addCustomUrl()">Attack Target</button>
                 </div>
 
                 <div class="server-list-container">
                     <ul id="server-list" class="server-list">
-                        <li class="empty">No servers loaded. Click "Auto-Search Web" or add a custom server URL.</li>
+                        <li class="empty">No servers loaded. Click "Auto-Search Web" or add a custom target.</li>
                     </ul>
                 </div>
             </section>
 
-            <!-- Right Panel: Scanner Progress & Playlists -->
+            <!-- Right Panel: Scanner Progress & GUI Console Log -->
             <section class="card panel">
                 <div class="panel-header">
-                    <h2>Scanner Controls</h2>
-                    <button class="btn btn-accent" onclick="startScan()" id="btn-scan-random">⚡ Brute Force Random Server</button>
+                    <h2>Live Terminal Console (GUI View)</h2>
+                    <button class="btn btn-accent" onclick="startScan()" id="btn-scan-random">⚡ Attack Random Server</button>
                 </div>
 
                 <!-- Progress Bar -->
@@ -83,8 +83,21 @@
                     </div>
                 </div>
 
+                <!-- Green CRT Terminal Console -->
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span class="terminal-title">IPTV Live Console Output</span>
+                    </div>
+                    <div class="terminal-body" id="terminal-output">
+                        <div class="log-line">IPTV Console Ready...</div>
+                    </div>
+                </div>
+
                 <!-- Generated Playlists -->
-                <div class="panel-header" style="margin-top: 2rem;">
+                <div class="panel-header" style="margin-top: 1.5rem;">
                     <h2>Generated M3U Playlists</h2>
                     <button class="btn btn-secondary" onclick="loadOutputs()">🔄 Refresh Files</button>
                 </div>

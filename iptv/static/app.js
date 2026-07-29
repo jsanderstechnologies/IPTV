@@ -18,6 +18,7 @@ async function fetchStatus() {
         }
 
         renderServers(data.parsed_urls);
+        renderTerminalLogs(data.scan_state.logs);
     } catch (err) {
         console.error("Failed to fetch status", err);
     }
@@ -26,16 +27,34 @@ async function fetchStatus() {
 function renderServers(urls) {
     const list = document.getElementById('server-list');
     if (!urls || urls.length === 0) {
-        list.innerHTML = '<li class="empty">No servers loaded. Click "Auto-Search Web" or add a custom server URL.</li>';
+        list.innerHTML = '<li class="empty">No servers loaded. Click "Auto-Search Web" or add a custom target.</li>';
         return;
     }
     
     list.innerHTML = urls.map((url, idx) => `
         <li>
             <span>[${idx}] ${url}</span>
-            <button class="btn btn-secondary" onclick="scanSpecific('${url}')">Scan</button>
+            <button class="btn btn-secondary" onclick="scanSpecific('${url}')">Attack</button>
         </li>
     `).join('');
+}
+
+function renderTerminalLogs(logs) {
+    const container = document.getElementById('terminal-output');
+    if (!logs || logs.length === 0) {
+        container.innerHTML = '<div class="log-line">IPTV Console Ready...</div>';
+        return;
+    }
+
+    const html = logs.map(line => {
+        if (line.includes("ACCOUNT FOUND")) {
+            return `<div class="log-line log-found">🔥 ${line}</div>`;
+        }
+        return `<div class="log-line">${line}</div>`;
+    }).join('');
+
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
 }
 
 async function searchLinks() {
@@ -108,6 +127,6 @@ async function loadOutputs() {
     }
 }
 
-setInterval(fetchStatus, 2000);
+setInterval(fetchStatus, 1500);
 fetchStatus();
 loadOutputs();
