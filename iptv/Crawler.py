@@ -16,7 +16,7 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.2.4"
+    version = "1.2.5"
     # output default directory
     outputDir = "output"
     # language default directory
@@ -91,7 +91,11 @@ class Crawler(object):
                 return "Language file does not exist"
                 
             fileLength = self.file_length(fileName)
-            progressBar = pyprind.ProgBar(fileLength, title="Fetching account from " + url + " this might take a while.", stream=1, monitor=True)
+            try:
+                progressBar = pyprind.ProgBar(fileLength, title="Fetching account from " + url + " this might take a while.", stream=1, monitor=True)
+            except Exception:
+                progressBar = pyprind.ProgBar(fileLength, title="Fetching account from " + url + " this might take a while.", stream=1, monitor=False)
+
             self.foundedAccounts = 0
             with open(fileName, "r", encoding="utf-8", errors="ignore") as f:
                 rows = f.readlines()
@@ -107,7 +111,7 @@ class Crawler(object):
                     fetched = res.text
                     if len(fetched) > 0 and "#EXTM3U" in fetched:
                         domain = url.replace("http://", "").replace("https://", "").strip("/")
-                        new_path = os.path.join(crawler.outputDir, domain)
+                        new_path = os.path.join(self.outputDir, domain)
                         self.create_file(username, new_path, fetched)
                 except requests.RequestException:
                     pass
