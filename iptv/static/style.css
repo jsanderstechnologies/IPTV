@@ -10,6 +10,7 @@
     --accent-hover: #059669;
     --highlight: #f59e0b;
     --danger: #ef4444;
+    --danger-hover: #dc2626;
     --terminal-bg: #040d04;
     --terminal-green: #00ff66;
 }
@@ -154,6 +155,11 @@ body {
     font-weight: 600;
 }
 
+.btn-group {
+    display: flex;
+    gap: 8px;
+}
+
 .add-url-bar {
     display: flex;
     gap: 8px;
@@ -216,6 +222,15 @@ body {
 
 .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: var(--danger-hover);
 }
 
 /* Dynamically sizing server list container */

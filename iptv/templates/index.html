@@ -15,10 +15,16 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge" id="app-version">v1.2.8</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v1.3.0</span></h1>
             </div>
             <div class="controls-top">
-                <label for="lang-select">Language Pack:</label>
+                <label for="attack-mode-select">Attack Mode:</label>
+                <select id="attack-mode-select">
+                    <option value="dictionary">Dictionary Wordlist</option>
+                    <option value="alphanumeric">Alphanumeric + Special Chars (Up to 12)</option>
+                </select>
+
+                <label for="lang-select" style="margin-left: 12px;">Language Pack:</label>
                 <select id="lang-select" onchange="changeLanguage()">
                     <option value="it">Italian (it)</option>
                     <option value="en">English (en)</option>
@@ -49,7 +55,10 @@
             <section class="card panel panel-left">
                 <div class="panel-header">
                     <h2>IPTV Target Servers</h2>
-                    <button class="btn btn-primary" onclick="searchLinks()">🔍 Auto-Search Web</button>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="saveServers()">💾 Save List</button>
+                        <button class="btn btn-primary" onclick="searchLinks()">🔍 Auto-Search Web</button>
+                    </div>
                 </div>
 
                 <!-- Custom URL Add Section -->
@@ -69,7 +78,10 @@
             <section class="card panel">
                 <div class="panel-header">
                     <h2>Live Terminal Console (GUI View)</h2>
-                    <button class="btn btn-accent" onclick="startScan()" id="btn-scan-random">⚡ Attack Random Server</button>
+                    <div class="btn-group">
+                        <button class="btn btn-accent" onclick="attackAllServers()" id="btn-attack-all">🚀 Attack ALL Servers</button>
+                        <button class="btn btn-danger" onclick="cancelScan()" id="btn-cancel-scan" style="display: none;">🛑 Cancel Attack</button>
+                    </div>
                 </div>
 
                 <!-- Progress Bar & Remaining Time ETA -->

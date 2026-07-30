@@ -15,14 +15,18 @@ async function fetchStatus() {
         document.getElementById('accounts-found').innerText = data.scan_state.found_accounts;
         document.getElementById('current-url').innerText = data.scan_state.current_url ? `Target: ${data.scan_state.current_url}` : 'Target: None';
 
+        const isScanning = data.scan_state.is_scanning;
+        document.getElementById('btn-cancel-scan').style.display = isScanning ? 'inline-block' : 'none';
+        document.getElementById('btn-attack-all').style.display = isScanning ? 'none' : 'inline-block';
+
         if (data.scan_state.total > 0) {
             const pct = Math.round((data.scan_state.progress / data.scan_state.total) * 100);
             document.getElementById('progress-fill').style.width = `${pct}%`;
             document.getElementById('progress-percent').innerText = `${pct}%`;
 
-            if (data.scan_state.is_scanning && data.scan_state.eta_seconds > 0) {
+            if (isScanning && data.scan_state.eta_seconds > 0) {
                 document.getElementById('eta-time').innerText = `ETA: ${formatSeconds(data.scan_state.eta_seconds)}`;
-            } else if (data.scan_state.is_scanning) {
+            } else if (isScanning) {
                 document.getElementById('eta-time').innerText = `ETA: Calculating...`;
             } else {
                 document.getElementById('eta-time').innerText = `ETA: 00m 00s`;
@@ -36,7 +40,6 @@ async function fetchStatus() {
         renderServers(data.parsed_urls);
         renderTerminalLogs(data.scan_state.logs);
         renderAccountsTable(data.found_accounts_list);
-        loadOutputs();
     } catch (err) {
         console.error("Failed to fetch status", err);
     }
@@ -52,9 +55,35 @@ function renderServers(urls) {
     list.innerHTML = urls.map((url, idx) => `
         <li>
             <span>[${idx}] ${url}</span>
-            <button class="btn btn-secondary" onclick="scanSpecific('${url}')">Attack</button>
+            <div>
+                <button class="btn btn-secondary btn-sm" onclick="removeServer('${url}')">❌</button>
+                <button class="btn btn-accent btn-sm" onclick="scanSpecific('${url}')">Attack</button>
+            </div>
         </li>
     `).join('');
+}
+
+async function removeServer(url) {
+    try {
+        await fetch('/api/remove-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        });
+        fetchStatus();
+    } catch (err) {
+        console.error("Failed to remove server", err);
+    }
+}
+
+async function saveServers() {
+    try {
+        const res = await fetch('/api/save-servers', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message);
+    } catch (err) {
+        console.error("Failed to save servers", err);
+    }
 }
 
 function renderAccountsTable(accounts) {
@@ -131,11 +160,25 @@ async function changeLanguage() {
 }
 
 async function startScan(url = null) {
+    const attackMode = document.getElementById('attack-mode-select').value;
     await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url })
+        body: JSON.stringify({ url: url, mode: attackMode })
     });
+}
+
+async function attackAllServers() {
+    const attackMode = document.getElementById('attack-mode-select').value;
+    await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attack_all: true, mode: attackMode })
+    });
+}
+
+async function cancelScan() {
+    await fetch('/api/cancel-scan', { method: 'POST' });
 }
 
 function scanSpecific(url) {
