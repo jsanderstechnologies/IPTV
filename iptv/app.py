@@ -215,7 +215,6 @@ def start_scan():
 
                 try:
                     while not scan_state["cancel_requested"]:
-                        # Pull next chunk from continuous generator without limits
                         batch = []
                         for _ in range(batch_size):
                             try:
@@ -335,10 +334,6 @@ def start_scan():
                                 log_event(msg_found, to_console=True)
                         except Exception:
                             pass
-
-            if server in crawler.parsedUrls and not scan_state["cancel_requested"]:
-                crawler.parsedUrls.remove(server)
-                crawler.save_servers_to_disk()
 
         was_cancelled = scan_state["cancel_requested"]
         scan_state["is_scanning"] = False
