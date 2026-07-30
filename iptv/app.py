@@ -5,6 +5,7 @@ import logging
 import time
 import string
 import itertools
+import shutil
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
 import Crawler
@@ -287,6 +288,32 @@ def list_outputs():
                         "path": rel_path.replace("\\", "/")
                     })
     return jsonify({"files": outputs})
+
+@app.route("/api/delete-output/<path:filepath>", methods=["POST", "DELETE"])
+def delete_output(filepath):
+    try:
+        full_path = os.path.abspath(os.path.join(crawler.outputDir, filepath))
+        if not full_path.startswith(os.path.abspath(crawler.outputDir)):
+            return jsonify({"success": False, "message": "Invalid file path"}), 400
+
+        if os.path.exists(full_path) and os.path.isfile(full_path):
+            os.remove(full_path)
+            
+            # Remove from found_accounts_list if present
+            norm_path = filepath.replace("\\", "/")
+            global found_accounts_list
+            found_accounts_list = [acc for acc in found_accounts_list if acc.get("file_path", "").replace("\\", "/") != norm_path]
+
+            # Clean up empty parent directory if left behind
+            parent_dir = os.path.dirname(full_path)
+            if os.path.exists(parent_dir) and not os.listdir(parent_dir):
+                shutil.rmtree(parent_dir, ignore_errors=True)
+
+            log_event(f"Deleted playlist file: {filepath}", to_console=True)
+            return jsonify({"success": True, "message": f"Deleted {filepath}"})
+        return jsonify({"success": False, "message": "File not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error deleting file: {e}"}), 500
 
 @app.route("/api/download/<path:filepath>")
 def download_file(filepath):

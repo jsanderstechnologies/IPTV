@@ -40,6 +40,7 @@ async function fetchStatus() {
         renderServers(data.parsed_urls);
         renderTerminalLogs(data.scan_state.logs);
         renderAccountsTable(data.found_accounts_list);
+        loadOutputs();
     } catch (err) {
         console.error("Failed to fetch status", err);
     }
@@ -123,7 +124,8 @@ function renderAccountsTable(accounts) {
             <td><strong class="text-user">${acc.username}</strong></td>
             <td><strong class="text-pass">${acc.password}</strong></td>
             <td>
-                <a href="/api/download/${acc.file_path}" class="btn btn-accent btn-sm" download>📥 Download M3U</a>
+                <a href="/api/download/${acc.file_path}" class="btn btn-accent btn-sm" download>📥 Download</a>
+                <button class="btn btn-danger btn-sm" onclick="deleteOutput('${acc.file_path}')">🗑️ Delete</button>
             </td>
         </tr>
     `).join('');
@@ -211,6 +213,22 @@ function scanSpecific(url) {
     startScan(url);
 }
 
+async function deleteOutput(filepath) {
+    if (!confirm(`Are you sure you want to delete ${filepath}?`)) return;
+    try {
+        const res = await fetch(`/api/delete-output/${filepath}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            fetchStatus();
+            loadOutputs();
+        } else {
+            alert(`Error: ${data.message}`);
+        }
+    } catch (err) {
+        console.error("Failed to delete output file", err);
+    }
+}
+
 async function loadOutputs() {
     try {
         const res = await fetch('/api/outputs');
@@ -225,7 +243,10 @@ async function loadOutputs() {
         list.innerHTML = data.files.map(file => `
             <li>
                 <span>📁 ${file.path}</span>
-                <a href="/api/download/${file.path}" class="btn btn-primary" download>Download</a>
+                <div>
+                    <a href="/api/download/${file.path}" class="btn btn-primary btn-sm" download>Download</a>
+                    <button class="btn btn-danger btn-sm" onclick="deleteOutput('${file.path}')">🗑️ Delete</button>
+                </div>
             </li>
         `).join('');
     } catch (err) {
