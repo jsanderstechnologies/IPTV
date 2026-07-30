@@ -152,7 +152,11 @@ function renderTerminalLogs(logs) {
 async function searchLinks() {
     document.getElementById('status-message').innerText = "Searching web for IPTV servers...";
     try {
-        await fetch('/api/search-links', { method: 'POST' });
+        await fetch('/api/search-links', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
         setTimeout(fetchStatus, 500);
     } catch (err) {
         console.error("Failed to start search", err);
