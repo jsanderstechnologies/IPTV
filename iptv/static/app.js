@@ -189,19 +189,21 @@ async function changeLanguage() {
 
 async function startScan(url = null) {
     const attackMode = document.getElementById('attack-mode-select').value;
+    const threads = document.getElementById('threads-select').value;
     await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url, mode: attackMode })
+        body: JSON.stringify({ url: url, mode: attackMode, threads: threads })
     });
 }
 
 async function attackAllServers() {
     const attackMode = document.getElementById('attack-mode-select').value;
+    const threads = document.getElementById('threads-select').value;
     await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attack_all: true, mode: attackMode })
+        body: JSON.stringify({ attack_all: true, mode: attackMode, threads: threads })
     });
 }
 

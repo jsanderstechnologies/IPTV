@@ -15,10 +15,18 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge" id="app-version">v1.3.1</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v1.4.0</span></h1>
             </div>
             <div class="controls-top">
-                <label for="attack-mode-select">Attack Mode:</label>
+                <label for="threads-select">CPU Threads:</label>
+                <select id="threads-select">
+                    <option value="16">16 Threads (Multi-Core)</option>
+                    <option value="32" selected>32 Threads (High-Speed)</option>
+                    <option value="64">64 Threads (Ultra-Fast)</option>
+                    <option value="128">128 Threads (Max Turbo)</option>
+                </select>
+
+                <label for="attack-mode-select" style="margin-left: 12px;">Attack Mode:</label>
                 <select id="attack-mode-select">
                     <option value="dictionary">Dictionary Wordlist</option>
                     <option value="alphanumeric">Alphanumeric + Special Chars (Up to 12)</option>
