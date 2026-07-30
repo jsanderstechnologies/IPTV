@@ -2,8 +2,10 @@ import os
 import random
 import threading
 import logging
+import time
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
+import Crawler
 
 # Configure standard Python logger for Docker/Portainer stdout logs
 logging.basicConfig(
@@ -15,7 +17,6 @@ logger = logging.getLogger("IPTV")
 app = Flask(__name__)
 CORS(app)
 
-import Crawler
 crawler = Crawler.Crawler("it")
 
 scan_state = {
@@ -25,6 +26,8 @@ scan_state = {
     "current_url": "",
     "status_message": "Idle",
     "found_accounts": 0,
+    "eta_seconds": 0,
+    "elapsed_seconds": 0,
     "logs": []
 }
 
@@ -98,6 +101,8 @@ def start_scan():
         scan_state["is_scanning"] = True
         scan_state["progress"] = 0
         scan_state["found_accounts"] = 0
+        scan_state["eta_seconds"] = 0
+        scan_state["elapsed_seconds"] = 0
         
         target_url = url if url else (random.choice(crawler.parsedUrls) if crawler.parsedUrls else None)
         if not target_url:
@@ -122,17 +127,28 @@ def start_scan():
         with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
             lines = [line.strip() for line in f if line.strip()]
 
-        scan_state["total"] = len(lines)
+        total_lines = len(lines)
+        scan_state["total"] = total_lines
         found = 0
+        start_time = time.time()
 
         headers = {'User-Agent': 'Mozilla/5.0'}
         import requests
         for idx, username in enumerate(lines, start=1):
             scan_state["progress"] = idx
+            
+            # Calculate elapsed time and ETA remaining
+            elapsed = time.time() - start_time
+            scan_state["elapsed_seconds"] = int(elapsed)
+            if idx > 1:
+                avg_time_per_item = elapsed / idx
+                remaining_items = total_lines - idx
+                scan_state["eta_seconds"] = int(avg_time_per_item * remaining_items)
+
             log_event(f"request for name: {username}", to_console=False)
             
-            if idx % 25 == 0 or idx == len(lines):
-                logger.info(f"Scan progress on {target_url}: {idx}/{len(lines)} ({round((idx/len(lines))*100)}%) - Accounts found: {found}")
+            if idx % 25 == 0 or idx == total_lines:
+                logger.info(f"Scan progress on {target_url}: {idx}/{total_lines} ({round((idx/total_lines)*100)}%) - Accounts found: {found} - ETA: {scan_state['eta_seconds']}s")
 
             target = target_url + crawler.basicString % (username, username)
             try:
@@ -154,6 +170,7 @@ def start_scan():
             crawler.parsedUrls.remove(target_url)
 
         scan_state["is_scanning"] = False
+        scan_state["eta_seconds"] = 0
         msg_done = f"Scan completed for {target_url}. Total accounts found: {found}"
         scan_state["status_message"] = msg_done
         log_event(msg_done, to_console=True)

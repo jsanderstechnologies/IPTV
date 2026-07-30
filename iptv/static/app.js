@@ -1,3 +1,10 @@
+function formatSeconds(seconds) {
+    if (!seconds || seconds <= 0) return "--:--";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs < 10 ? '0' : ''}${secs}s remaining`;
+}
+
 async function fetchStatus() {
     try {
         const res = await fetch('/api/status');
@@ -12,9 +19,18 @@ async function fetchStatus() {
             const pct = Math.round((data.scan_state.progress / data.scan_state.total) * 100);
             document.getElementById('progress-fill').style.width = `${pct}%`;
             document.getElementById('progress-percent').innerText = `${pct}%`;
+
+            if (data.scan_state.is_scanning && data.scan_state.eta_seconds > 0) {
+                document.getElementById('eta-time').innerText = `ETA: ${formatSeconds(data.scan_state.eta_seconds)}`;
+            } else if (data.scan_state.is_scanning) {
+                document.getElementById('eta-time').innerText = `ETA: Calculating...`;
+            } else {
+                document.getElementById('eta-time').innerText = `ETA: 00m 00s`;
+            }
         } else {
             document.getElementById('progress-fill').style.width = '0%';
             document.getElementById('progress-percent').innerText = '0%';
+            document.getElementById('eta-time').innerText = 'ETA: --:--';
         }
 
         renderServers(data.parsed_urls);

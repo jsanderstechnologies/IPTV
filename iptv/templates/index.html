@@ -72,11 +72,14 @@
                     <button class="btn btn-accent" onclick="startScan()" id="btn-scan-random">⚡ Attack Random Server</button>
                 </div>
 
-                <!-- Progress Bar -->
+                <!-- Progress Bar & Remaining Time ETA -->
                 <div class="progress-section">
                     <div class="progress-header">
                         <span id="current-url">Target: None</span>
-                        <span id="progress-percent">0%</span>
+                        <div class="progress-meta">
+                            <span id="eta-time" class="eta-badge">ETA: --:--</span>
+                            <span id="progress-percent">0%</span>
+                        </div>
                     </div>
                     <div class="progress-bar-bg">
                         <div class="progress-bar-fill" id="progress-fill"></div>

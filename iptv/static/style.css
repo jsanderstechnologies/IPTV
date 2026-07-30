@@ -263,9 +263,26 @@ body {
 .progress-header {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 0.85rem;
     color: var(--text-muted);
     margin-bottom: 6px;
+}
+
+.progress-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.eta-badge {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--highlight);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 2px 8px;
+    border-radius: 4px;
 }
 
 .progress-bar-bg {
