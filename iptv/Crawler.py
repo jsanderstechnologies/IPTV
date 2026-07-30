@@ -18,7 +18,7 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.3.0"
+    version = "1.3.1"
     # output default directory
     outputDir = "output"
     # language default directory
@@ -100,19 +100,35 @@ class Crawler(object):
             print(f"Error saving servers: {e}")
             return False
 
-    def add_custom_url(self, url):
-        """Allow manually adding a target server URL"""
-        if not url:
-            return False
-        if not url.startswith("http://") and not url.startswith("https://"):
-            url = "http://" + url
-        parsed = urlparse(url)
-        clean_url = parsed.scheme + "://" + parsed.netloc
-        if clean_url not in self.parsedUrls:
-            self.parsedUrls.append(clean_url)
+    def add_custom_urls(self, text_or_list):
+        """Allow manually adding multiple target server URLs from string/list"""
+        if isinstance(text_or_list, str):
+            raw_urls = re.split(r'[\r\n,;]+', text_or_list)
+        elif isinstance(text_or_list, list):
+            raw_urls = text_or_list
+        else:
+            return 0
+
+        added_count = 0
+        for raw in raw_urls:
+            url = raw.strip()
+            if not url:
+                continue
+            if not url.startswith("http://") and not url.startswith("https://"):
+                url = "http://" + url
+            parsed = urlparse(url)
+            clean_url = parsed.scheme + "://" + parsed.netloc
+            if clean_url and clean_url not in self.parsedUrls:
+                self.parsedUrls.append(clean_url)
+                added_count += 1
+
+        if added_count > 0:
             self.save_servers_to_disk()
-            return True
-        return False
+        return added_count
+
+    def add_custom_url(self, url):
+        """Allow manually adding a single target server URL"""
+        return self.add_custom_urls(url) > 0
 
     def remove_server_url(self, url):
         """Remove a server URL from list"""

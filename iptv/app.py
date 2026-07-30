@@ -84,11 +84,28 @@ def remove_url():
 @app.route("/api/add-url", methods=["POST"])
 def add_url():
     data = request.json or {}
-    url = data.get("url", "").strip()
-    if crawler.add_custom_url(url):
-        log_event(f"Manually added target server: {url}", to_console=True)
-        return jsonify({"success": True, "message": f"Added {url}", "parsed_urls": crawler.parsedUrls})
-    return jsonify({"success": False, "message": "Invalid or duplicate URL"}), 400
+    text_content = data.get("url", "").strip()
+    added_count = crawler.add_custom_urls(text_content)
+    if added_count > 0:
+        log_event(f"Added {added_count} target server URL(s)", to_console=True)
+        return jsonify({"success": True, "message": f"Added {added_count} URL(s)", "parsed_urls": crawler.parsedUrls})
+    return jsonify({"success": False, "message": "No valid or new server URLs found"}), 400
+
+@app.route("/api/upload-server-list", methods=["POST"])
+def upload_server_list():
+    if 'file' not in request.files:
+        return jsonify({"success": False, "message": "No file uploaded"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"success": False, "message": "Empty file name"}), 400
+    
+    try:
+        content = file.read().decode('utf-8', errors='ignore')
+        added_count = crawler.add_custom_urls(content)
+        log_event(f"Uploaded server list file '{file.filename}'. Added {added_count} new server(s).", to_console=True)
+        return jsonify({"success": True, "added_count": added_count, "parsed_urls": crawler.parsedUrls})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Failed to parse file: {e}"}), 500
 
 @app.route("/api/search-links", methods=["POST"])
 def search_links():
@@ -137,7 +154,7 @@ def start_scan():
     data = request.json or {}
     target_url = data.get("url")
     attack_all = data.get("attack_all", False)
-    charset_mode = data.get("mode", "dictionary") # "dictionary" or "alphanumeric"
+    charset_mode = data.get("mode", "dictionary")
     max_len = data.get("max_length", 12)
 
     def run_scan():
@@ -178,10 +195,9 @@ def start_scan():
 
             word_stream = []
             if charset_mode == "alphanumeric":
-                # Alphanumeric stream limited to max_len (e.g. 12 chars)
                 log_event(f"Using Alphanumeric & Special Chars brute force (Up to {max_len} chars)...", to_console=True)
                 word_stream = generate_alphanumeric_generator(min_len=1, max_len=max_len)
-                total_lines = 1000000 # Streaming total estimate
+                total_lines = 1000000
             else:
                 lang_file = os.path.join(crawler.languageDir, crawler.language + ".txt")
                 if not os.path.exists(lang_file):

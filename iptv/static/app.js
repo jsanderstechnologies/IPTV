@@ -48,7 +48,7 @@ async function fetchStatus() {
 function renderServers(urls) {
     const list = document.getElementById('server-list');
     if (!urls || urls.length === 0) {
-        list.innerHTML = '<li class="empty">No servers loaded. Click "Auto-Search Web" or add a custom target.</li>';
+        list.innerHTML = '<li class="empty">No servers loaded. Click "Auto-Search Web", paste multiple URLs, or upload a .txt file.</li>';
         return;
     }
     
@@ -83,6 +83,30 @@ async function saveServers() {
         alert(data.message);
     } catch (err) {
         console.error("Failed to save servers", err);
+    }
+}
+
+async function uploadServerFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/api/upload-server-list', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(`File uploaded! Added ${data.added_count} new server(s).`);
+            fetchStatus();
+        } else {
+            alert(`Error: ${data.message}`);
+        }
+    } catch (err) {
+        console.error("Failed to upload server list file", err);
     }
 }
 
@@ -139,11 +163,13 @@ async function addCustomUrl() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: url })
         });
+        const data = await res.json();
         if (res.ok) {
             input.value = '';
+            alert(data.message);
             fetchStatus();
         } else {
-            alert('Invalid or duplicate server URL.');
+            alert(data.message || 'Invalid or duplicate server URL.');
         }
     } catch (err) {
         console.error("Failed to add URL", err);
