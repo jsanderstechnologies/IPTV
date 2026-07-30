@@ -18,6 +18,5 @@ WORKDIR /app/iptv
 
 EXPOSE 5000
 
-# Explicit ENTRYPOINT and CMD for reliable container execution
-ENTRYPOINT ["python"]
-CMD ["app.py"]
+# Direct CMD execution for container runtime
+CMD ["python", "app.py"]
