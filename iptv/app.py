@@ -152,6 +152,58 @@ def cancel_scan():
     log_event(msg, to_console=True)
     return jsonify({"status": "Cancellation requested"})
 
+@app.route("/api/test-credentials", methods=["POST"])
+def test_credentials():
+    data = request.json or {}
+    server = data.get("server", "").strip()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+
+    if not server or not username or not password:
+        return jsonify({"success": False, "message": "Server, username, and password are required."}), 400
+
+    if not server.startswith("http://") and not server.startswith("https://"):
+        server = "http://" + server
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    target_endpoint = server + crawler.basicString % (username, password)
+    log_event(f"Testing manual login on {server} (User: {username}, Pass: {password})...", to_console=True)
+
+    import requests
+    try:
+        res = requests.get(target_endpoint, headers=headers, timeout=6)
+        if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
+            domain = server.replace("http://", "").replace("https://", "").strip("/")
+            new_path = os.path.join(crawler.outputDir, domain)
+            crawler.create_file(username, new_path, res.text)
+            
+            m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
+            playlist_url = f"{server}/get.php?username={username}&password={password}&type=m3u&output=mpegts"
+            
+            account_data = {
+                "server": server,
+                "username": username,
+                "password": password,
+                "file_path": m3u_file_path,
+                "playlist_url": playlist_url
+            }
+            
+            # Prevent duplicate entries in found list
+            if not any(acc["server"] == server and acc["username"] == username and acc["password"] == password for acc in found_accounts_list):
+                found_accounts_list.append(account_data)
+
+            msg_found = f"SUCCESS! Manual login verified -> User: '{username}' | Pass: '{password}' | Server: '{server}'"
+            log_event(msg_found, to_console=True)
+            return jsonify({"success": True, "message": msg_found, "account": account_data})
+        else:
+            msg_fail = f"FAILED: Invalid credentials or non-M3U response from {server} (HTTP {res.status_code})"
+            log_event(msg_fail, to_console=True)
+            return jsonify({"success": False, "message": msg_fail})
+    except Exception as e:
+        msg_err = f"ERROR connecting to {server}: {e}"
+        log_event(msg_err, to_console=True)
+        return jsonify({"success": False, "message": msg_err}), 500
+
 @app.route("/api/scan", methods=["POST"])
 def start_scan():
     if scan_state["is_scanning"]:
@@ -365,7 +417,7 @@ def start_scan():
 
     thread = threading.Thread(target=run_scan)
     thread.start()
-    return jsonify({"status": "Search started"})
+    return jsonify({"status": "Scan started"})
 
 @app.route("/api/outputs", methods=["GET"])
 def list_outputs():

@@ -15,7 +15,7 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge" id="app-version">v2.0.0</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v2.1.0</span></h1>
             </div>
             <div class="controls-top">
                 <label for="search-limit-select">Search Limit:</label>
@@ -80,6 +80,19 @@
                 <div class="add-url-box">
                     <textarea id="custom-url-input" placeholder="Paste single or multiple server URLs here (one per line, comma or semicolon separated)..." class="input-textarea" rows="2"></textarea>
                     <button class="btn btn-accent" onclick="addCustomUrl()">+ Add Servers</button>
+                </div>
+
+                <!-- Manual Server & Credential Test Section -->
+                <div class="manual-test-box">
+                    <h3 class="box-subtitle">🧪 Manual Server Login Tester</h3>
+                    <div class="input-row">
+                        <input type="text" id="manual-server" placeholder="Server URL (e.g. http://192.168.10.10:8080)" class="input-text">
+                    </div>
+                    <div class="input-row split">
+                        <input type="text" id="manual-user" placeholder="Username" class="input-text">
+                        <input type="text" id="manual-pass" placeholder="Password" class="input-text">
+                        <button class="btn btn-primary" onclick="testManualCredentials()">⚡ Test Login</button>
+                    </div>
                 </div>
 
                 <div class="server-list-container">

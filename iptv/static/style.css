@@ -173,6 +173,36 @@ body {
     margin-bottom: 14px;
 }
 
+.manual-test-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 14px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.box-subtitle {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.input-row.split {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+}
+
 .input-textarea {
     width: 100%;
     background: rgba(15, 23, 42, 0.6);
@@ -185,8 +215,19 @@ body {
     resize: vertical;
 }
 
-.input-textarea:focus {
+.input-textarea:focus, .input-text:focus {
     outline: 1px solid var(--primary);
+}
+
+.input-text {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.82rem;
 }
 
 .btn {

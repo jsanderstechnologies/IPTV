@@ -152,7 +152,7 @@ function renderTerminalLogs(logs) {
     }
 
     const html = logs.map(line => {
-        if (line.includes("ACCOUNT FOUND")) {
+        if (line.includes("ACCOUNT FOUND") || line.includes("SUCCESS!")) {
             return `<div class="log-line log-found">🔥 ${line}</div>`;
         }
         return `<div class="log-line">${line}</div>`;
@@ -198,6 +198,36 @@ async function addCustomUrl() {
         }
     } catch (err) {
         console.error("Failed to add URL", err);
+    }
+}
+
+async function testManualCredentials() {
+    const serverInput = document.getElementById('manual-server');
+    const userInput = document.getElementById('manual-user');
+    const passInput = document.getElementById('manual-pass');
+
+    const server = serverInput.value.trim();
+    const username = userInput.value.trim();
+    const password = passInput.value.trim();
+
+    if (!server || !username || !password) {
+        alert("Please enter Server URL, Username, and Password.");
+        return;
+    }
+
+    document.getElementById('status-message').innerText = `Testing ${username}:${password} on ${server}...`;
+    try {
+        const res = await fetch('/api/test-credentials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ server: server, username: username, password: password })
+        });
+        const data = await res.json();
+        alert(data.message);
+        fetchStatus();
+    } catch (err) {
+        alert("Error testing credentials: " + err);
+        console.error("Failed to test credentials", err);
     }
 }
 
