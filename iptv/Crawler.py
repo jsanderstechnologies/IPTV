@@ -17,15 +17,22 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "2.0.0"
+    version = "2.1.0"
     # output default directory
     outputDir = "output"
     # language default directory
     languageDir = "languages"
     # saved servers file
     savedServersFile = "saved_servers.json"
-    # string used to exploit the CMS
+    # primary string used to exploit the CMS
     basicString = "/get.php?username=%s&password=%s&type=m3u&output=mpegts"
+    # multiple format strings tested across different IPTV panel variants
+    endpointTemplates = [
+        "/get.php?username=%s&password=%s&type=m3u&output=mpegts",
+        "/get.php?username=%s&password=%s&type=m3u&output=ts",
+        "/get.php?username=%s&password=%s&type=m3u_plus",
+        "/get.php?username=%s&password=%s&type=m3u_plus&output=ts"
+    ]
     # expanded queries used to search IPTV servers across search engines
     searchQueries = [
         "Xtream Codes v1.0.59.5",
