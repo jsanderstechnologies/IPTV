@@ -17,7 +17,7 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.8.0"
+    version = "2.0.0"
     # output default directory
     outputDir = "output"
     # language default directory
@@ -38,29 +38,6 @@ class Crawler(object):
         "xtream codes panel m3u get.php",
         "iptv server get.php?username=",
         "inurl:live/get.php?username="
-    ]
-    # Fallback pre-populated sample servers list expanded to 20 items
-    fallbackServers = [
-        "http://iptv1.example-server.com:8080",
-        "http://iptv2.example-server.com:8080",
-        "http://stream.tv-provider.net:8000",
-        "http://stream2.tv-provider.net:8000",
-        "http://panel.iptv-live.org:8080",
-        "http://panel2.iptv-live.org:8080",
-        "http://server1.xtream-iptv.com:8000",
-        "http://server2.xtream-iptv.com:8000",
-        "http://live.iptv-stream.co:25461",
-        "http://play.iptv-stream.co:25461",
-        "http://iptv-portal.org:8080",
-        "http://iptv-portal.net:8080",
-        "http://stream.iptv-fast.com:8000",
-        "http://cdn.iptv-fast.com:8000",
-        "http://vod.iptv-premium.io:8080",
-        "http://tv.iptv-premium.io:8080",
-        "http://iptv-direct.me:8000",
-        "http://iptv-direct.net:8000",
-        "http://box.iptv-service.tv:8080",
-        "http://play.iptv-service.tv:8080"
     ]
 
     def __init__(self, language="en"):
@@ -136,18 +113,18 @@ class Crawler(object):
         return True
 
     def search_links(self, custom_query=None, limit=20):
-        """Fetch IPTV server links from web search engines up to configurable limit"""
+        """Fetch IPTV server links strictly from live search engines"""
         queries = [custom_query] if custom_query else self.searchQueries
         found = 0
         target_limit = int(limit)
 
-        # Method 1: Google Search Scraping
+        # Method 1: Google Search API/Scraper
         for query in queries:
             try:
-                for url in search(query, num_results=target_limit, timeout=5):
+                for url in search(query, num_results=target_limit, timeout=8):
                     parsed = urlparse(url)
                     base_url = parsed.scheme + "://" + parsed.netloc
-                    if base_url and base_url not in self.parsedUrls:
+                    if base_url and base_url not in self.parsedUrls and "google" not in base_url:
                         self.parsedUrls.append(base_url)
                         found += 1
                     if len(self.parsedUrls) >= target_limit:
@@ -157,31 +134,50 @@ class Crawler(object):
             if len(self.parsedUrls) >= target_limit:
                 break
 
-        # Method 2: Fallback DuckDuckGo HTML scraping if under limit
+        # Method 2: DuckDuckGo Live HTML Search Engine Scraping
         if len(self.parsedUrls) < target_limit:
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:110.0) Gecko/20100101 Firefox/110.0',
+                'Accept-Language': 'en-US,en;q=0.5'
+            }
             for query in queries:
                 try:
-                    res = requests.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers, timeout=5)
+                    res = requests.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers, timeout=8)
                     if res.status_code == 200:
                         urls = re.findall(r'https?://[a-zA-Z0-9.-]+(?::[0-9]+)?', res.text)
                         for u in urls:
-                            if "duckduckgo" not in u and u not in self.parsedUrls:
-                                self.parsedUrls.append(u)
+                            parsed = urlparse(u)
+                            base_url = parsed.scheme + "://" + parsed.netloc
+                            if base_url and "duckduckgo" not in base_url and base_url not in self.parsedUrls:
+                                self.parsedUrls.append(base_url)
                                 found += 1
                             if len(self.parsedUrls) >= target_limit:
                                 break
                 except Exception as e:
-                    print(f"DuckDuckGo fallback error: {e}")
+                    print(f"DuckDuckGo search error: {e}")
                 if len(self.parsedUrls) >= target_limit:
                     break
 
-        # Method 3: Populate from fallback list if still under limit
+        # Method 3: Bing Live Search Scraping
         if len(self.parsedUrls) < target_limit:
-            for s in self.fallbackServers:
-                if s not in self.parsedUrls:
-                    self.parsedUrls.append(s)
-                    found += 1
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+            }
+            for query in queries:
+                try:
+                    res = requests.get(f"https://www.bing.com/search?q={query}", headers=headers, timeout=8)
+                    if res.status_code == 200:
+                        urls = re.findall(r'https?://[a-zA-Z0-9.-]+(?::[0-9]+)?', res.text)
+                        for u in urls:
+                            parsed = urlparse(u)
+                            base_url = parsed.scheme + "://" + parsed.netloc
+                            if base_url and "bing.com" not in base_url and "microsoft.com" not in base_url and base_url not in self.parsedUrls:
+                                self.parsedUrls.append(base_url)
+                                found += 1
+                            if len(self.parsedUrls) >= target_limit:
+                                break
+                except Exception as e:
+                    print(f"Bing search error: {e}")
                 if len(self.parsedUrls) >= target_limit:
                     break
 
