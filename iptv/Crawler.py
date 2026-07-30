@@ -17,7 +17,7 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.5.0"
+    version = "1.7.0"
     # output default directory
     outputDir = "output"
     # language default directory
@@ -128,6 +128,12 @@ class Crawler(object):
             self.save_servers_to_disk()
             return True
         return False
+
+    def clear_all_servers(self):
+        """Clear all target servers from memory and disk"""
+        self.parsedUrls = []
+        self.save_servers_to_disk()
+        return True
 
     def search_links(self, custom_query=None):
         """Fetch IPTV server links from web search engines"""

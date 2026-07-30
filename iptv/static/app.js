@@ -87,6 +87,19 @@ async function saveServers() {
     }
 }
 
+async function clearServers() {
+    if (!confirm("Are you sure you want to clear all target servers from the list?")) return;
+    try {
+        const res = await fetch('/api/clear-servers', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            fetchStatus();
+        }
+    } catch (err) {
+        console.error("Failed to clear servers", err);
+    }
+}
+
 async function uploadServerFile(event) {
     const file = event.target.files[0];
     if (!file) return;

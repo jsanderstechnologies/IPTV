@@ -15,7 +15,7 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge" id="app-version">v1.6.0</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v1.7.0</span></h1>
             </div>
             <div class="controls-top">
                 <label for="threads-select">CPU Threads:</label>
@@ -63,6 +63,7 @@
                             <input type="file" id="file-upload-input" accept=".txt,.json,.csv" onchange="uploadServerFile(event)" hidden>
                         </label>
                         <button class="btn btn-secondary" onclick="saveServers()">💾 Save List</button>
+                        <button class="btn btn-danger" onclick="clearServers()">🧹 Clear List</button>
                         <button class="btn btn-primary" onclick="searchLinks()">🔍 Auto-Search Web</button>
                     </div>
                 </div>

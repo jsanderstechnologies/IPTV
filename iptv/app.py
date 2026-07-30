@@ -82,6 +82,12 @@ def save_servers():
         return jsonify({"success": True, "message": "Servers list saved to disk successfully."})
     return jsonify({"success": False, "message": "Failed to save servers to disk."}), 500
 
+@app.route("/api/clear-servers", methods=["POST"])
+def clear_servers():
+    crawler.clear_all_servers()
+    log_event("Cleared all target servers from list.", to_console=True)
+    return jsonify({"success": True, "message": "All target servers cleared.", "parsed_urls": crawler.parsedUrls})
+
 @app.route("/api/remove-url", methods=["POST"])
 def remove_url():
     data = request.json or {}
