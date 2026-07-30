@@ -54,6 +54,13 @@ def generate_alphanumeric_generator(min_len=1, max_len=12):
         for combo in itertools.product(chars, repeat=length):
             yield "".join(combo)
 
+def generate_numeric_generator(min_len=1, max_len=10):
+    """Continuous generator for 1 to 10 digit numeric combinations (0-9)"""
+    digits = string.digits
+    for length in range(min_len, max_len + 1):
+        for combo in itertools.product(digits, repeat=length):
+            yield "".join(combo)
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -203,9 +210,14 @@ def start_scan():
             found = 0
             start_time = time.time()
 
-            if charset_mode == "alphanumeric":
-                log_event(f"Using Alphanumeric & Special Chars streaming brute force (Up to {max_len} chars)...", to_console=True)
-                gen = generate_alphanumeric_generator(min_len=1, max_len=max_len)
+            if charset_mode in ["alphanumeric", "numeric"]:
+                if charset_mode == "numeric":
+                    log_event("Using Numeric streaming brute force (0-9, Up to 10 digits)...", to_console=True)
+                    gen = generate_numeric_generator(min_len=1, max_len=10)
+                else:
+                    log_event(f"Using Alphanumeric & Special Chars streaming brute force (Up to {max_len} chars)...", to_console=True)
+                    gen = generate_alphanumeric_generator(min_len=1, max_len=max_len)
+
                 total_estimated = 1000000
                 scan_state["total"] = total_estimated
                 processed_count = 0
