@@ -35,6 +35,8 @@ async function fetchStatus() {
 
         renderServers(data.parsed_urls);
         renderTerminalLogs(data.scan_state.logs);
+        renderAccountsTable(data.found_accounts_list);
+        loadOutputs();
     } catch (err) {
         console.error("Failed to fetch status", err);
     }
@@ -52,6 +54,25 @@ function renderServers(urls) {
             <span>[${idx}] ${url}</span>
             <button class="btn btn-secondary" onclick="scanSpecific('${url}')">Attack</button>
         </li>
+    `).join('');
+}
+
+function renderAccountsTable(accounts) {
+    const tbody = document.getElementById('accounts-table-body');
+    if (!accounts || accounts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No accounts found yet. Run scan to discover credentials.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = accounts.map(acc => `
+        <tr>
+            <td><code>${acc.server}</code></td>
+            <td><strong class="text-user">${acc.username}</strong></td>
+            <td><strong class="text-pass">${acc.password}</strong></td>
+            <td>
+                <a href="/api/download/${acc.file_path}" class="btn btn-accent btn-sm" download>📥 Download M3U</a>
+            </td>
+        </tr>
     `).join('');
 }
 

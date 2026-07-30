@@ -19,6 +19,9 @@ CORS(app)
 
 crawler = Crawler.Crawler("it")
 
+# Global found accounts store
+found_accounts_list = []
+
 scan_state = {
     "is_scanning": False,
     "progress": 0,
@@ -48,7 +51,8 @@ def get_status():
         "version": crawler.version,
         "language": crawler.language,
         "parsed_urls": crawler.parsedUrls,
-        "scan_state": scan_state
+        "scan_state": scan_state,
+        "found_accounts_list": found_accounts_list
     })
 
 @app.route("/api/add-url", methods=["POST"])
@@ -137,7 +141,6 @@ def start_scan():
         for idx, username in enumerate(lines, start=1):
             scan_state["progress"] = idx
             
-            # Calculate elapsed time and ETA remaining
             elapsed = time.time() - start_time
             scan_state["elapsed_seconds"] = int(elapsed)
             if idx > 1:
@@ -161,6 +164,17 @@ def start_scan():
                     scan_state["found_accounts"] = found
                     
                     m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
+                    playlist_url = f"{target_url}/get.php?username={username}&password={username}&type=m3u&output=mpegts"
+                    
+                    account_data = {
+                        "server": target_url,
+                        "username": username,
+                        "password": username,
+                        "file_path": m3u_file_path,
+                        "playlist_url": playlist_url
+                    }
+                    found_accounts_list.append(account_data)
+
                     msg_found = f"ACCOUNT FOUND !!! -> Username: '{username}' | Password: '{username}' | Server: '{target_url}' | Saved file: '{m3u_file_path}'"
                     log_event(msg_found, to_console=True)
             except Exception:

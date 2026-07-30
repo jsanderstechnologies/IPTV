@@ -15,7 +15,7 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge" id="app-version">v1.2.7</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v1.2.8</span></h1>
             </div>
             <div class="controls-top">
                 <label for="lang-select">Language Pack:</label>
@@ -65,7 +65,7 @@
                 </div>
             </section>
 
-            <!-- Right Panel: Scanner Progress & GUI Console Log -->
+            <!-- Right Panel: Scanner Progress, GUI Console Log & Credentials Table -->
             <section class="card panel">
                 <div class="panel-header">
                     <h2>Live Terminal Console (GUI View)</h2>
@@ -97,6 +97,26 @@
                     <div class="terminal-body" id="terminal-output">
                         <div class="log-line">IPTV Console Ready...</div>
                     </div>
+                </div>
+
+                <!-- Found Accounts Table Panel -->
+                <div class="panel-header" style="margin-top: 1.5rem;">
+                    <h2>🔑 Discovered Accounts & Login Info</h2>
+                </div>
+                <div class="accounts-container">
+                    <table class="accounts-table">
+                        <thead>
+                            <tr>
+                                <th>Server</th>
+                                <th>Username</th>
+                                <th>Password</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accounts-table-body">
+                            <tr><td colspan="4" class="empty">No accounts found yet. Run scan to discover credentials.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 <!-- Generated Playlists -->
