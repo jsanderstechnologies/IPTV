@@ -163,12 +163,13 @@ function renderTerminalLogs(logs) {
 }
 
 async function searchLinks() {
-    document.getElementById('status-message').innerText = "Searching web for IPTV servers...";
+    const limit = document.getElementById('search-limit-select').value;
+    document.getElementById('status-message').innerText = `Searching web for up to ${limit} IPTV servers...`;
     try {
         await fetch('/api/search-links', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
+            body: JSON.stringify({ limit: limit })
         });
         setTimeout(fetchStatus, 500);
     } catch (err) {

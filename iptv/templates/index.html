@@ -15,10 +15,18 @@
         <header class="app-header">
             <div class="logo">
                 <span class="icon">📺</span>
-                <h1>IPTV Crawler <span class="badge" id="app-version">v1.7.0</span></h1>
+                <h1>IPTV Crawler <span class="badge" id="app-version">v1.8.0</span></h1>
             </div>
             <div class="controls-top">
-                <label for="threads-select">CPU Threads:</label>
+                <label for="search-limit-select">Search Limit:</label>
+                <select id="search-limit-select">
+                    <option value="10">10 Servers</option>
+                    <option value="20" selected>20 Servers</option>
+                    <option value="50">50 Servers</option>
+                    <option value="100">100 Servers</option>
+                </select>
+
+                <label for="threads-select" style="margin-left: 12px;">CPU Threads:</label>
                 <select id="threads-select">
                     <option value="16">16 Threads (Multi-Core)</option>
                     <option value="32" selected>32 Threads (High-Speed)</option>

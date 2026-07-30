@@ -127,12 +127,13 @@ def upload_server_list():
 def search_links():
     data = request.json or {}
     query = data.get("query", "").strip() or None
+    limit = int(data.get("limit", 20))
 
     def do_search():
-        msg = "Searching web for IPTV server URLs..."
+        msg = f"Searching web for up to {limit} IPTV server URLs..."
         scan_state["status_message"] = msg
         log_event(msg, to_console=True)
-        found = crawler.search_links(query)
+        found = crawler.search_links(query, limit=limit)
         msg_complete = f"Search complete. Discovered {found} new servers. Total available: {len(crawler.parsedUrls)}"
         scan_state["status_message"] = msg_complete
         log_event(msg_complete, to_console=True)
@@ -364,7 +365,7 @@ def start_scan():
 
     thread = threading.Thread(target=run_scan)
     thread.start()
-    return jsonify({"status": "Scan started"})
+    return jsonify({"status": "Search started"})
 
 @app.route("/api/outputs", methods=["GET"])
 def list_outputs():

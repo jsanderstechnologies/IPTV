@@ -17,7 +17,7 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.7.0"
+    version = "1.8.0"
     # output default directory
     outputDir = "output"
     # language default directory
@@ -135,29 +135,30 @@ class Crawler(object):
         self.save_servers_to_disk()
         return True
 
-    def search_links(self, custom_query=None):
-        """Fetch IPTV server links from web search engines"""
+    def search_links(self, custom_query=None, limit=20):
+        """Fetch IPTV server links from web search engines up to configurable limit"""
         queries = [custom_query] if custom_query else self.searchQueries
         found = 0
+        target_limit = int(limit)
 
         # Method 1: Google Search Scraping
         for query in queries:
             try:
-                for url in search(query, num_results=20, timeout=5):
+                for url in search(query, num_results=target_limit, timeout=5):
                     parsed = urlparse(url)
                     base_url = parsed.scheme + "://" + parsed.netloc
                     if base_url and base_url not in self.parsedUrls:
                         self.parsedUrls.append(base_url)
                         found += 1
-                    if len(self.parsedUrls) >= 20:
+                    if len(self.parsedUrls) >= target_limit:
                         break
             except Exception as e:
                 print(f"Google search error for query '{query}': {e}")
-            if len(self.parsedUrls) >= 20:
+            if len(self.parsedUrls) >= target_limit:
                 break
 
-        # Method 2: Fallback DuckDuckGo HTML scraping if under 20 URLs found
-        if len(self.parsedUrls) < 20:
+        # Method 2: Fallback DuckDuckGo HTML scraping if under limit
+        if len(self.parsedUrls) < target_limit:
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
             for query in queries:
                 try:
@@ -168,20 +169,20 @@ class Crawler(object):
                             if "duckduckgo" not in u and u not in self.parsedUrls:
                                 self.parsedUrls.append(u)
                                 found += 1
-                            if len(self.parsedUrls) >= 20:
+                            if len(self.parsedUrls) >= target_limit:
                                 break
                 except Exception as e:
                     print(f"DuckDuckGo fallback error: {e}")
-                if len(self.parsedUrls) >= 20:
+                if len(self.parsedUrls) >= target_limit:
                     break
 
-        # Method 3: Populate from fallback list if still under 20 URLs
-        if len(self.parsedUrls) < 20:
+        # Method 3: Populate from fallback list if still under limit
+        if len(self.parsedUrls) < target_limit:
             for s in self.fallbackServers:
                 if s not in self.parsedUrls:
                     self.parsedUrls.append(s)
                     found += 1
-                if len(self.parsedUrls) >= 20:
+                if len(self.parsedUrls) >= target_limit:
                     break
 
         self.save_servers_to_disk()
