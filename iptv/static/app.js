@@ -150,8 +150,13 @@ function renderTerminalLogs(logs) {
 }
 
 async function searchLinks() {
-    document.getElementById('status-message').innerText = "Searching web for servers...";
-    await fetch('/api/search-links', { method: 'POST' });
+    document.getElementById('status-message').innerText = "Searching web for IPTV servers...";
+    try {
+        await fetch('/api/search-links', { method: 'POST' });
+        setTimeout(fetchStatus, 500);
+    } catch (err) {
+        console.error("Failed to start search", err);
+    }
 }
 
 async function addCustomUrl() {
@@ -176,15 +181,6 @@ async function addCustomUrl() {
     } catch (err) {
         console.error("Failed to add URL", err);
     }
-}
-
-async function changeLanguage() {
-    const lang = document.getElementById('lang-select').value;
-    await fetch('/api/change-language', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: lang })
-    });
 }
 
 async function startScan(url = null) {

@@ -6,7 +6,6 @@ import json
 from urllib.parse import urlparse
 import requests
 from googlesearch import search
-import pyprind
 
 """Crawler
 Class that handles the crawling process that fetch accounts on illegal IPTVs
@@ -18,7 +17,7 @@ Arm4x (@Arm4x)
 """
 class Crawler(object):
     # version
-    version = "1.3.1"
+    version = "1.5.0"
     # output default directory
     outputDir = "output"
     # language default directory
@@ -64,20 +63,12 @@ class Crawler(object):
         "http://play.iptv-service.tv:8080"
     ]
 
-    def __init__(self, language="it"):
-        """Default constructor"""
-        self.language = language.lower()
+    def __init__(self, language="en"):
+        """Default constructor - Default to English"""
+        self.language = "en"
         self.parsedUrls = []
         self.foundedAccounts = 0
         self.load_saved_servers()
-
-    def change_language(self, language="it"):
-        """Set the language you want to use to brute force names"""
-        if os.path.isfile(os.path.join(self.languageDir, language + ".txt")):
-            self.language = language
-            return True
-        else:
-            return False
 
     def load_saved_servers(self):
         """Load saved server list from disk JSON file"""

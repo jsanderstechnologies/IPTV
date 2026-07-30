@@ -21,7 +21,7 @@ logger = logging.getLogger("IPTV")
 app = Flask(__name__)
 CORS(app)
 
-crawler = Crawler.Crawler("it")
+crawler = Crawler.Crawler("en")
 
 found_accounts_list = []
 
@@ -128,17 +128,6 @@ def search_links():
     thread.start()
     return jsonify({"status": "Search started"})
 
-@app.route("/api/change-language", methods=["POST"])
-def change_language():
-    data = request.json or {}
-    lang = data.get("language", "it")
-    success = crawler.change_language(lang)
-    if success:
-        log_event(f"Language changed to {lang}.txt", to_console=True)
-        return jsonify({"success": True, "language": crawler.language, "message": f"Language set to {lang}"})
-    else:
-        return jsonify({"success": False, "message": f"Language file for {lang} not found"}), 400
-
 @app.route("/api/cancel-scan", methods=["POST"])
 def cancel_scan():
     if not scan_state["is_scanning"]:
@@ -214,14 +203,13 @@ def start_scan():
             word_list = []
             if charset_mode == "alphanumeric":
                 log_event(f"Using Alphanumeric & Special Chars brute force (Up to {max_len} chars)...", to_console=True)
-                # Take first chunk of generator for thread pool mapping
                 gen = generate_alphanumeric_generator(min_len=1, max_len=max_len)
                 word_list = [next(gen) for _ in range(50000)]
                 total_lines = len(word_list)
             else:
-                lang_file = os.path.join(crawler.languageDir, crawler.language + ".txt")
+                lang_file = os.path.join(crawler.languageDir, "en.txt")
                 if not os.path.exists(lang_file):
-                    log_event("Error: Language file missing.", to_console=True)
+                    log_event("Error: English wordlist missing.", to_console=True)
                     continue
                 with open(lang_file, "r", encoding="utf-8", errors="ignore") as f:
                     word_list = [line.strip() for line in f if line.strip()]
@@ -231,7 +219,6 @@ def start_scan():
             found = 0
             start_time = time.time()
 
-            # Execute parallel HTTP checks using ThreadPoolExecutor across CPU cores
             with ThreadPoolExecutor(max_workers=threads_count) as executor:
                 future_to_username = {executor.submit(check_username, server, uname, headers): uname for uname in word_list}
                 
