@@ -4,7 +4,6 @@ import threading
 import logging
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
-import Crawler
 
 # Configure standard Python logger for Docker/Portainer stdout logs
 logging.basicConfig(
@@ -16,6 +15,7 @@ logger = logging.getLogger("IPTV")
 app = Flask(__name__)
 CORS(app)
 
+import Crawler
 crawler = Crawler.Crawler("it")
 
 scan_state = {
@@ -144,7 +144,6 @@ def start_scan():
                     found += 1
                     scan_state["found_accounts"] = found
                     
-                    # Explicit detailed account credentials log
                     m3u_file_path = os.path.join(domain, f"tv_channels_{username}.m3u").replace("\\", "/")
                     msg_found = f"ACCOUNT FOUND !!! -> Username: '{username}' | Password: '{username}' | Server: '{target_url}' | Saved file: '{m3u_file_path}'"
                     log_event(msg_found, to_console=True)
@@ -182,7 +181,11 @@ def list_outputs():
 def download_file(filepath):
     return send_from_directory(crawler.outputDir, filepath, as_attachment=True)
 
+def main():
+    logger.info("Starting IPTV Web Server on port 5000...")
+    app.run(host="0.0.0.0", port=5000, debug=False)
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    main()
 else:
-    app.run(host="0.0.0.0", port=5000)
+    main()
