@@ -32,15 +32,18 @@ body {
 .app-container {
     max-width: 1200px;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 40px);
 }
 
 .app-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 0;
+    padding: 16px 0;
     border-bottom: 1px solid var(--border-color);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 .logo {
@@ -82,7 +85,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 .card {
@@ -91,6 +94,16 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 20px;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-left {
+    flex: 1;
+    min-height: 500px;
 }
 
 .stat-card h3 {
@@ -119,6 +132,8 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
+    flex: 1;
+    align-items: stretch;
 }
 
 @media (max-width: 768px) {
@@ -198,8 +213,18 @@ body {
     background: rgba(255, 255, 255, 0.2);
 }
 
-.server-list-container, .playlist-container {
-    max-height: 250px;
+/* Dynamically sizing server list container */
+.server-list-container {
+    flex: 1;
+    min-height: 380px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.playlist-container {
+    max-height: 180px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -217,6 +242,7 @@ body {
     padding: 10px 14px;
     border-bottom: 1px solid var(--border-color);
     font-size: 0.875rem;
+    word-break: break-all;
 }
 
 .server-list li:last-child, .playlist-list li:last-child {
@@ -226,6 +252,7 @@ body {
 .server-list li.empty, .playlist-list li.empty {
     color: var(--text-muted);
     justify-content: center;
+    padding: 20px;
 }
 
 .progress-section {
@@ -295,7 +322,7 @@ body {
 
 .terminal-body {
     padding: 12px;
-    height: 220px;
+    height: 200px;
     overflow-y: auto;
     font-family: 'Fira Code', monospace;
     font-size: 0.82rem;
